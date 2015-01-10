@@ -12,7 +12,6 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -26,11 +25,11 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.apache.commons.lang3.StringUtils.join;
 
 public class BugzillaAdapterMain {
-    private static AtomicInteger totalCount = new AtomicInteger();
-    private static Client client = new Client();
-    private static BugzillaHttpSession session = new BugzillaHttpSession();
+    private static final AtomicInteger totalCount = new AtomicInteger();
+    private static final Client client = new Client();
+    private static final BugzillaHttpSession session = new BugzillaHttpSession();
 
-    public BugzillaAdapterMain() throws MalformedURLException {
+    public BugzillaAdapterMain() {
     }
 
     public void run() throws IOException, ConnectionException {
@@ -44,7 +43,7 @@ public class BugzillaAdapterMain {
         }
     }
 
-    private void doForAnIssue(Integer id) throws IOException, ConnectionException {
+    private void doForAnIssue(Integer id) {
         int count = totalCount.incrementAndGet();
 
         if ((count % 10) == 0) {
@@ -114,7 +113,7 @@ public class BugzillaAdapterMain {
             preparedStatement.setString(19, null);
 
             preparedStatement.executeUpdate();
-        } catch (MySQLIntegrityConstraintViolationException e) {
+        } catch (MySQLIntegrityConstraintViolationException ignored) {
         } catch (SQLException e) {
             e.printStackTrace();
         }

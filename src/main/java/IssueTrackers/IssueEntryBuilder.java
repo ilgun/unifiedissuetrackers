@@ -149,8 +149,7 @@ public class IssueEntryBuilder {
     }
 
     public IssueEntry build() {
-        IssueEntry issueEntry = new IssueEntry(issueId, trackerType, issueAddress, assignee, reporter, priority, resolution, reportedDate, dueDate, currentEstimate, remainingEstimate,
+        return new IssueEntry(issueId, trackerType, issueAddress, assignee, reporter, priority, resolution, reportedDate, dueDate, currentEstimate, remainingEstimate,
                 originalEstimate, state, description, product, components, release, issueLinks, comments, customFields, summary);
-        return issueEntry;
     }
 }

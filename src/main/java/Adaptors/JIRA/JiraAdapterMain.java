@@ -30,18 +30,19 @@ import static IssueTrackers.IssueLinkBuilder.anIssueLink;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Lists.newLinkedList;
 import static com.google.common.collect.Maps.newHashMap;
+import static java.lang.System.gc;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
 import static org.joda.time.DateTime.parse;
 
 public class JiraAdapterMain {
 
-    private Client client;
-    private Connection connection;
-    private String repositoryUrl;
-    private String repositoryType;
-    private String projectName;
-    private String projectUrl;
+    private final Client client;
+    private final Connection connection;
+    private final String repositoryUrl;
+    private final String repositoryType;
+    private final String projectName;
+    private final String projectUrl;
     private int projectId;
     private int issueRepositoryId;
     private DatabaseHelperMethods helperMethods;
@@ -53,6 +54,18 @@ public class JiraAdapterMain {
         this.projectUrl = projectUrl;
         this.repositoryUrl = repositoryUrl;
         this.repositoryType = repositoryType;
+    }
+
+    public static void main(String[] args) throws IOException {
+        JiraAdapterMain main = new JiraAdapterMain(
+                new Client(),
+                new IssueTrackerConnector().getConnection(),
+                "HIVE",
+                "https://hive.apache.org",
+                "https://issues.apache.org/jira/browse/HIVE",
+                "JIRA");
+
+        main.run();
     }
 
     public void run() throws IOException {
@@ -80,9 +93,9 @@ public class JiraAdapterMain {
             System.out.println(startPoint);
             response.close();
             client.destroy();
+            gc();
         }
     }
-
 
     private void saveIssue(JsonNode root, JsonNode names) throws IOException {
         String issueId = root.get("id").asText();
@@ -129,7 +142,7 @@ public class JiraAdapterMain {
         }
     }
 
-    private void saveHistory(JsonNode root, int databaseIssueId) throws IOException {
+    private void saveHistory(JsonNode root, int databaseIssueId) {
         JsonNode histories = root.get("changelog").get("histories");
         for (JsonNode history : histories) {
             JsonNode authorNode = history.get("author");
@@ -147,7 +160,7 @@ public class JiraAdapterMain {
         }
     }
 
-    private void saveCustomFields(List<CustomField> customFields, int issueId) throws IOException {
+    private void saveCustomFields(List<CustomField> customFields, int issueId) {
         for (CustomField aCustomField : customFields) {
             if (aCustomField.getDescription() == null) continue;
             int customFieldId = helperMethods.getOrCreateCustomField(issueRepositoryId, aCustomField.getDescription());
@@ -155,7 +168,7 @@ public class JiraAdapterMain {
         }
     }
 
-    private String getCustomFieldDescription(String customFieldId, JsonNode names) throws IOException {
+    private String getCustomFieldDescription(String customFieldId, JsonNode names) {
         return names.get(customFieldId).asText();
     }
 
@@ -280,7 +293,6 @@ public class JiraAdapterMain {
                 if (null != generatedKeys && generatedKeys.next()) {
                     newIssueId = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
             preparedStatement.close();
         } catch (SQLException e) {
@@ -301,7 +313,7 @@ public class JiraAdapterMain {
 
     private Hours getOriginalEstimate(JsonNode fields) {
         JsonNode originalEstimateString = fields.get("timeoriginalestimate");
-        Seconds originalEstimate = null;
+        Seconds originalEstimate ;
         if (!originalEstimateString.isNull()) {
             originalEstimate = Seconds.seconds(originalEstimateString.getIntValue());
             return originalEstimate.toStandardHours();
@@ -311,7 +323,7 @@ public class JiraAdapterMain {
 
     private Hours getCurrentEstimate(JsonNode fields) {
         JsonNode aggregateTimeEstimate = fields.get("aggregatetimeestimate");
-        Seconds currentEstimate = null;
+        Seconds currentEstimate;
         if (!aggregateTimeEstimate.isNull()) {
             currentEstimate = Seconds.seconds(aggregateTimeEstimate.getIntValue());
             return currentEstimate.toStandardHours();
@@ -423,18 +435,5 @@ public class JiraAdapterMain {
             }
         }
         return links;
-    }
-
-
-    public static void main(String[] args) throws IOException {
-        JiraAdapterMain main = new JiraAdapterMain(
-                new Client(),
-                new IssueTrackerConnector().getConnection(),
-                "HIVE",
-                "https://hive.apache.org",
-                "https://issues.apache.org/jira/browse/HIVE",
-                "JIRA");
-
-        main.run();
     }
 }

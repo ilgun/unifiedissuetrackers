@@ -13,11 +13,9 @@ import static com.google.common.collect.Maps.newHashMap;
 
 public class DatabaseHelperMethods {
     private final Connection connection;
-    private final Client client;
 
     public DatabaseHelperMethods(Connection connection, Client client) {
         this.connection = connection;
-        this.client = client;
     }
 
     public int checkIfExits(String tableName, Map<String, TableColumnName> variablesToCheck) {
@@ -27,7 +25,7 @@ public class DatabaseHelperMethods {
             Entry<String, TableColumnName> entries = variablesToCheck.entrySet().iterator().next();
             String sql = "Select id from " + tableName + " where " + entries.getValue().name() + " = ?";
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.setString(1, entries.getKey().toString());
+            preparedStatement.setString(1, entries.getKey());
             rs = preparedStatement.executeQuery();
             if (rs.next()) {
                 output = rs.getInt("id");
@@ -43,11 +41,11 @@ public class DatabaseHelperMethods {
         try {
             ResultSet rs;
             StringBuilder sqlBuilder = new StringBuilder();
-            sqlBuilder.append("Select id from " + tableName);
+            sqlBuilder.append("Select id from ").append(tableName);
             Entry<Integer, TableColumnName> intEntry = idField.entrySet().iterator().next();
             Entry<String, TableColumnName> stringEntry = stringField.entrySet().iterator().next();
-            sqlBuilder.append(" where " + intEntry.getValue() + " = ? ");
-            sqlBuilder.append(" AND " + stringEntry.getValue() + " = ?");
+            sqlBuilder.append(" where ").append(intEntry.getValue()).append(" = ? ");
+            sqlBuilder.append(" AND ").append(stringEntry.getValue()).append(" = ?");
 
             PreparedStatement preparedStatement = connection.prepareStatement(sqlBuilder.toString());
             preparedStatement.setInt(1, intEntry.getKey());
@@ -83,7 +81,6 @@ public class DatabaseHelperMethods {
                 if (null != generatedKeys && generatedKeys.next()) {
                     projectId = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -119,7 +116,6 @@ public class DatabaseHelperMethods {
                 if (null != generatedKeys && generatedKeys.next()) {
                     output = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -142,7 +138,6 @@ public class DatabaseHelperMethods {
                 if (null != generatedKeys && generatedKeys.next()) {
                     userNameId = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -165,7 +160,6 @@ public class DatabaseHelperMethods {
                 if (null != generatedKeys && generatedKeys.next()) {
                     userId = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -221,7 +215,6 @@ public class DatabaseHelperMethods {
                 if (null != generatedKeys && generatedKeys.next()) {
                     repositoryId = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -255,7 +248,6 @@ public class DatabaseHelperMethods {
                 if (null != generatedKeys && generatedKeys.next()) {
                     output = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -284,7 +276,6 @@ public class DatabaseHelperMethods {
                 if (null != generatedKeys && generatedKeys.next()) {
                     newCustomFieldId = generatedKeys.getInt(1);
                 }
-                generatedKeys.close();
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);

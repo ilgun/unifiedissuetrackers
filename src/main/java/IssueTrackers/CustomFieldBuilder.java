@@ -34,7 +34,6 @@ public class CustomFieldBuilder {
     }
 
     public CustomField build() {
-        CustomField customField = new CustomField(customFieldId, issueId, value, description);
-        return customField;
+        return new CustomField(customFieldId, issueId, value, description);
     }
 }

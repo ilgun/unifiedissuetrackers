@@ -33,7 +33,6 @@ public class IssueLinkBuilder {
     }
 
     public IssueLink build() {
-        IssueLink issueLink = new IssueLink(originalIssueId, linkedIssueId, linkedIssueType);
-        return issueLink;
+        return new IssueLink(originalIssueId, linkedIssueId, linkedIssueType);
     }
 }

@@ -39,7 +39,6 @@ public class CommentBuilder {
     }
 
     public Comment build() {
-        Comment comment = new Comment(authorName, authorDisplayName, authorEmail, body);
-        return comment;
+        return new Comment(authorName, authorDisplayName, authorEmail, body);
     }
 }
