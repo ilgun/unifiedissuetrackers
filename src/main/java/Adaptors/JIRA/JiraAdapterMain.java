@@ -115,9 +115,9 @@ public class JiraAdapterMain {
         int assigneeUserId = getAssigneeId(fields);
         int priorityId = getPriorityId(fields, issueRepositoryId);
 
-        String updated = fields.get("updated").asText();
-        LinkedList<IssueLink> issueLinks = getIssueLinks(issueId, fields);
-        DateTime resolutionDate = getResolutionDate(fields);
+        //String updated = fields.get("updated").asText();
+        //LinkedList<IssueLink> issueLinks = getIssueLinks(issueId, fields);
+        //DateTime resolutionDate = getResolutionDate(fields);
 
         int databaseIssueId = saveIssue(root, issueId, summary, reporterUserId, createdDate, description, priorityId, status, projectName, componentNames, dueDate,
                 assigneeUserId, currentEstimate, issueAddress, release, resolutionStatus, originalEstimate);
@@ -144,12 +144,16 @@ public class JiraAdapterMain {
         JsonNode histories = root.get("changelog").get("histories");
         if (histories.isNull()) return;
         for (JsonNode history : histories) {
-            if (history.isNull() || history.get("author").isNull()) {
+            if (history.isNull() || history.get("author") == null || history.get("author").isNull()) {
                 continue;
             }
             JsonNode authorNode = history.get("author");
-            String authorName = authorNode.get("name").asText();
-            String authorEmail = authorNode.get("emailAddress").asText();
+            String authorName = null;
+            String authorEmail = null;
+            if (!authorNode.get("name").isNull() && !authorNode.get("emailAddress").isNull()) {
+                authorName = authorNode.get("name").asText();
+                authorEmail = authorNode.get("emailAddress").asText();
+            }
             String date = null;
             if (!history.get("created").isNull()) {
                 date = history.get("created").asText();
@@ -199,7 +203,7 @@ public class JiraAdapterMain {
     private String getRelease(JsonNode fields) {
         JsonNode fixVersionsNode = fields.get("fixVersions");
         String release;
-        if (fixVersionsNode != null && fixVersionsNode.get(0) != null) {
+        if (!fixVersionsNode.isNull() && fixVersionsNode.get(0) != null) {
             release = fixVersionsNode.get(0).get("name").asText();
         } else {
             release = null;
@@ -319,7 +323,7 @@ public class JiraAdapterMain {
     private Hours getOriginalEstimate(JsonNode fields) {
         JsonNode originalEstimateString = fields.get("timeoriginalestimate");
         Seconds originalEstimate;
-        if (originalEstimateString != null) {
+        if (!originalEstimateString.isNull()) {
             originalEstimate = Seconds.seconds(originalEstimateString.getIntValue());
             return originalEstimate.toStandardHours();
         }
@@ -329,7 +333,7 @@ public class JiraAdapterMain {
     private Hours getCurrentEstimate(JsonNode fields) {
         JsonNode aggregateTimeEstimate = fields.get("aggregatetimeestimate");
         Seconds currentEstimate;
-        if (aggregateTimeEstimate != null) {
+        if (!aggregateTimeEstimate.isNull()) {
             currentEstimate = Seconds.seconds(aggregateTimeEstimate.getIntValue());
             return currentEstimate.toStandardHours();
         }
@@ -338,7 +342,7 @@ public class JiraAdapterMain {
 
     private int getAssigneeId(JsonNode fields) {
         JsonNode assignee = fields.get("assignee");
-        if (assignee != null && assignee.get("name") != null) {
+        if (!assignee.isNull() && assignee.get("name") != null) {
             String assigneeName = assignee.get("name").asText();
             //String assigneeDisplayName = assignee.get("displayName").asText();
             String assigneeEmail = assignee.get("emailAddress").asText();
@@ -360,7 +364,7 @@ public class JiraAdapterMain {
     private String getResolutionStatus(JsonNode fields) {
         JsonNode resolutionField = fields.get("resolution");
         String resolutionStatus;
-        if (resolutionField != null && resolutionField.get("name") != null) {
+        if (!resolutionField.isNull() && resolutionField.get("name") != null) {
             resolutionStatus = resolutionField.get("name").asText();
         } else {
             resolutionStatus = "Unresolved";
@@ -374,7 +378,7 @@ public class JiraAdapterMain {
         while (allFieldNames.hasNext()) {
             String next = allFieldNames.next();
             JsonNode nextCustomValue = fields.findValue(next);
-            if (next.startsWith("customfield") && nextCustomValue != null && !isEmpty(nextCustomValue.asText())) {
+            if (next.startsWith("customfield") && !nextCustomValue.isNull() && !isEmpty(nextCustomValue.asText())) {
                 CustomField customField = aCustomField()
                         .withCustomFieldId(next)
                         .withIssueId(issueId)
@@ -393,7 +397,7 @@ public class JiraAdapterMain {
         String jsonString = response.getEntity(String.class);
         JsonNode commentsNode = new ObjectMapper().readTree(jsonString);
         LinkedList<Comment> commentsList = newLinkedList();
-        if (commentsNode.get("comments") != null) {
+        if (!commentsNode.get("comments").isNull()) {
             JsonNode comments = commentsNode.get("comments");
             for (int i = 0; i < comments.size(); i++) {
                 String authorName = comments.get(i).get("author").get("name").asText();
@@ -415,18 +419,18 @@ public class JiraAdapterMain {
     private LinkedList<IssueLink> getIssueLinks(String originalIssueId, JsonNode fields) {
         LinkedList<IssueLink> links = newLinkedList();
         JsonNode issueLinks = fields.get("issuelinks");
-        if (issueLinks != null) {
+        if (!issueLinks.isNull()) {
             for (int i = 0; i < issueLinks.size(); i++) {
                 JsonNode outwardIssue = issueLinks.get(i).get("outwardIssue");
                 String linkedIssueId;
-                if (outwardIssue != null) {
+                if (!outwardIssue.isNull()) {
                     linkedIssueId = outwardIssue.get("id").asText();
                 } else {
                     linkedIssueId = "0";
                 }
                 JsonNode type = issueLinks.get(i).get("type");
                 String linkedIssueType;
-                if (type != null) {
+                if (!type.isNull()) {
                     linkedIssueType = type.get("name").asText();
                 } else {
                     linkedIssueType = "NoType";
