@@ -30,7 +30,6 @@ import static IssueTrackers.IssueLinkBuilder.anIssueLink;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Lists.newLinkedList;
 import static com.google.common.collect.Maps.newHashMap;
-import static java.lang.System.gc;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
 import static org.joda.time.DateTime.parse;
@@ -93,7 +92,6 @@ public class JiraAdapterMain {
             System.out.println(startPoint);
             response.close();
             client.destroy();
-            gc();
         }
     }
 
@@ -144,11 +142,18 @@ public class JiraAdapterMain {
 
     private void saveHistory(JsonNode root, int databaseIssueId) {
         JsonNode histories = root.get("changelog").get("histories");
+        if (histories.isNull()) return;
         for (JsonNode history : histories) {
+            if (history.isNull() || history.get("author").isNull()) {
+                continue;
+            }
             JsonNode authorNode = history.get("author");
             String authorName = authorNode.get("name").asText();
             String authorEmail = authorNode.get("emailAddress").asText();
-            String date = history.get("created").asText();
+            String date = null;
+            if (!history.get("created").isNull()) {
+                date = history.get("created").asText();
+            }
             int userId = helperMethods.createOrGetRepositoryUser(authorName, authorEmail, issueRepositoryId);
             JsonNode itemsNode = history.get("items");
             for (JsonNode anItem : itemsNode) {
@@ -313,8 +318,8 @@ public class JiraAdapterMain {
 
     private Hours getOriginalEstimate(JsonNode fields) {
         JsonNode originalEstimateString = fields.get("timeoriginalestimate");
-        Seconds originalEstimate ;
-        if (!originalEstimateString.isNull()) {
+        Seconds originalEstimate;
+        if (originalEstimateString != null) {
             originalEstimate = Seconds.seconds(originalEstimateString.getIntValue());
             return originalEstimate.toStandardHours();
         }
@@ -324,7 +329,7 @@ public class JiraAdapterMain {
     private Hours getCurrentEstimate(JsonNode fields) {
         JsonNode aggregateTimeEstimate = fields.get("aggregatetimeestimate");
         Seconds currentEstimate;
-        if (!aggregateTimeEstimate.isNull()) {
+        if (aggregateTimeEstimate != null) {
             currentEstimate = Seconds.seconds(aggregateTimeEstimate.getIntValue());
             return currentEstimate.toStandardHours();
         }
@@ -369,7 +374,7 @@ public class JiraAdapterMain {
         while (allFieldNames.hasNext()) {
             String next = allFieldNames.next();
             JsonNode nextCustomValue = fields.findValue(next);
-            if (next.startsWith("customfield") && !nextCustomValue.isNull() && !isEmpty(nextCustomValue.asText())) {
+            if (next.startsWith("customfield") && nextCustomValue != null && !isEmpty(nextCustomValue.asText())) {
                 CustomField customField = aCustomField()
                         .withCustomFieldId(next)
                         .withIssueId(issueId)
@@ -388,7 +393,7 @@ public class JiraAdapterMain {
         String jsonString = response.getEntity(String.class);
         JsonNode commentsNode = new ObjectMapper().readTree(jsonString);
         LinkedList<Comment> commentsList = newLinkedList();
-        if (!commentsNode.get("comments").isNull()) {
+        if (commentsNode.get("comments") != null) {
             JsonNode comments = commentsNode.get("comments");
             for (int i = 0; i < comments.size(); i++) {
                 String authorName = comments.get(i).get("author").get("name").asText();
