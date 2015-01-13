@@ -1,4 +1,4 @@
-package Adaptors.JIRA;
+package Adaptors.IssueRepositories;
 
 public enum TableColumnName {
     projectName,

@@ -1,4 +1,4 @@
-package Adaptors.JIRA;
+package Adaptors.IssueRepositories;
 
 
 import DatabaseConnectors.IssueTrackerConnector;
@@ -30,11 +30,12 @@ import static IssueTrackers.IssueLinkBuilder.anIssueLink;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Lists.newLinkedList;
 import static com.google.common.collect.Maps.newHashMap;
+import static java.sql.Types.INTEGER;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
 import static org.joda.time.DateTime.parse;
 
-public class JiraAdapterMain {
+public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNode> {
 
     private final Client client;
     private final Connection connection;
@@ -98,6 +99,7 @@ public class JiraAdapterMain {
     private void saveIssue(JsonNode root, JsonNode names) throws IOException {
         String issueId = root.get("id").asText();
         JsonNode fields = root.get("fields");
+        String issueType = fields.get("issuetype").get("name").asText();
         String summary = fields.get("summary").asText();
         DateTime dueDate = getDueDate(fields);
         DateTime createdDate = parse(fields.get("created").asText());
@@ -114,13 +116,8 @@ public class JiraAdapterMain {
         int reporterUserId = getReporterId(fields);
         int assigneeUserId = getAssigneeId(fields);
         int priorityId = getPriorityId(fields, issueRepositoryId);
-
-        //String updated = fields.get("updated").asText();
-        //LinkedList<IssueLink> issueLinks = getIssueLinks(issueId, fields);
-        //DateTime resolutionDate = getResolutionDate(fields);
-
-        int databaseIssueId = saveIssue(root, issueId, summary, reporterUserId, createdDate, description, priorityId, status, projectName, componentNames, dueDate,
-                assigneeUserId, currentEstimate, issueAddress, release, resolutionStatus, originalEstimate);
+        int databaseIssueId = saveIssue(root, issueId, summary, issueType, reporterUserId, createdDate, description, priorityId, status,
+                projectName, componentNames, dueDate, assigneeUserId, currentEstimate, issueAddress, release, resolutionStatus, originalEstimate);
 
         saveHistory(root, databaseIssueId);
 
@@ -129,9 +126,22 @@ public class JiraAdapterMain {
 
         List<CustomField> customFields = getCustomFields(issueId, fields, names);
         saveCustomFields(customFields, databaseIssueId);
+
+        List<IssueLink> issueLinks = getIssueLinks(fields);
+        saveIssueLinks(databaseIssueId, issueLinks);
     }
 
-    private void saveComments(List<Comment> comments, int databaseIssueId) {
+    @Override
+    public void saveIssueLinks(int databaseIssueId, List<IssueLink> issueLinks) {
+        for (IssueLink anIssueLink : issueLinks) {
+            String issueType = anIssueLink.getLinkedIssueType();
+            String linkedIssueId = anIssueLink.getLinkedIssueId();
+            helperMethods.saveIssueLink(issueRepositoryId, databaseIssueId, issueType, linkedIssueId);
+        }
+    }
+
+    @Override
+    public void saveComments(List<Comment> comments, int databaseIssueId) {
         for (Comment aComment : comments) {
             String content = aComment.getBody();
             String authorEmail = aComment.getAuthorEmail();
@@ -140,7 +150,8 @@ public class JiraAdapterMain {
         }
     }
 
-    private void saveHistory(JsonNode root, int databaseIssueId) {
+    @Override
+    public void saveHistory(JsonNode root, int databaseIssueId) {
         JsonNode histories = root.get("changelog").get("histories");
         if (histories.isNull()) return;
         for (JsonNode history : histories) {
@@ -169,7 +180,8 @@ public class JiraAdapterMain {
         }
     }
 
-    private void saveCustomFields(List<CustomField> customFields, int issueId) {
+    @Override
+    public void saveCustomFields(List<CustomField> customFields, int issueId) {
         for (CustomField aCustomField : customFields) {
             if (aCustomField.getDescription() == null) continue;
             int customFieldId = helperMethods.getOrCreateCustomField(issueRepositoryId, aCustomField.getDescription());
@@ -181,7 +193,8 @@ public class JiraAdapterMain {
         return names.get(customFieldId).asText();
     }
 
-    private int getPriorityId(JsonNode fields, int issueRepositoryId) throws IOException {
+    @Override
+    public int getPriorityId(JsonNode fields, int issueRepositoryId) throws IOException {
         JsonNode priority = fields.get("priority");
         String id = priority.get("id").asText();
         String priorityName = priority.get("name").asText();
@@ -211,17 +224,18 @@ public class JiraAdapterMain {
         return release;
     }
 
-    private int getReporterId(JsonNode fields) {
+    @Override
+    public int getReporterId(JsonNode fields) {
         JsonNode reporterNode = fields.get("reporter");
-        //String reporterDisplayName = reporterNode.get("displayName").asText();
         String reporterEmail = reporterNode.get("emailAddress").asText();
         String reporterName = reporterNode.get("name").asText();
         return helperMethods.createOrGetRepositoryUser(reporterName, reporterEmail, issueRepositoryId);
     }
 
-    private int saveIssue(JsonNode root, String issueId, String summary, int reporterUserId, DateTime createdDate, String description, int priorityId, String status,
-                          String projectName, List<String> componentNames, DateTime dueDate, int assigneeUserId, Hours currentEstimate, String issueAddress, String release,
-                          String resolutionStatus, Hours originalEstimate) {
+    @Override
+    public int saveIssue(JsonNode root, String issueId, String summary, String issueType, int reporterUserId, DateTime createdDate, String description, int priorityId, String status,
+                         String projectName, List<String> componentNames, DateTime dueDate, int assigneeUserId, Hours currentEstimate, String issueAddress, String release,
+                         String resolutionStatus, Hours originalEstimate) {
         Map<Integer, TableColumnName> intMap = newHashMap();
         intMap.put(Integer.valueOf(issueId), TableColumnName.issueId);
         Map<String, TableColumnName> stringMap = newHashMap();
@@ -249,8 +263,8 @@ public class JiraAdapterMain {
                     "`product`,\n" +
                     "`components`,\n" +
                     "`release`,\n" +
-                    "`summary`,\n" +
-                    "`originalJson`)" +
+                    "`issueType`,\n" +
+                    "`summary`)" +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             PreparedStatement preparedStatement = connection.prepareStatement(sql, new String[]{"id"});
@@ -260,7 +274,7 @@ public class JiraAdapterMain {
             if (assigneeUserId != 0) {
                 preparedStatement.setInt(4, assigneeUserId);
             } else {
-                preparedStatement.setNull(4, java.sql.Types.INTEGER);
+                preparedStatement.setNull(4, INTEGER);
             }
             preparedStatement.setInt(5, reporterUserId);
             preparedStatement.setInt(6, priorityId);
@@ -294,8 +308,8 @@ public class JiraAdapterMain {
             preparedStatement.setString(15, projectName);
             preparedStatement.setString(16, join(componentNames, ","));
             preparedStatement.setString(17, release);
-            preparedStatement.setString(18, summary);
-            preparedStatement.setString(19, root.toString());
+            preparedStatement.setString(18, issueType);
+            preparedStatement.setString(19, summary);
 
             if (preparedStatement.executeUpdate() > 0) {
                 ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
@@ -340,7 +354,8 @@ public class JiraAdapterMain {
         return null;
     }
 
-    private int getAssigneeId(JsonNode fields) {
+    @Override
+    public int getAssigneeId(JsonNode fields) {
         JsonNode assignee = fields.get("assignee");
         if (!assignee.isNull() && assignee.get("name") != null) {
             String assigneeName = assignee.get("name").asText();
@@ -416,27 +431,28 @@ public class JiraAdapterMain {
         return commentsList;
     }
 
-    private LinkedList<IssueLink> getIssueLinks(String originalIssueId, JsonNode fields) {
-        LinkedList<IssueLink> links = newLinkedList();
+    private List<IssueLink> getIssueLinks(JsonNode fields) {
+        List<IssueLink> links = newArrayList();
         JsonNode issueLinks = fields.get("issuelinks");
         if (!issueLinks.isNull()) {
             for (int i = 0; i < issueLinks.size(); i++) {
                 JsonNode outwardIssue = issueLinks.get(i).get("outwardIssue");
-                String linkedIssueId;
-                if (!outwardIssue.isNull()) {
-                    linkedIssueId = outwardIssue.get("id").asText();
-                } else {
-                    linkedIssueId = "0";
-                }
+                JsonNode inwardIssue = issueLinks.get(i).get("inwardIssue");
                 JsonNode type = issueLinks.get(i).get("type");
+
+                String linkedIssueId;
                 String linkedIssueType;
-                if (!type.isNull()) {
-                    linkedIssueType = type.get("name").asText();
+                if (outwardIssue != null && outwardIssue.isNull()) {
+                    linkedIssueId = outwardIssue.get("id").asText();
+                    linkedIssueType = type.get("outward").asText();
+                } else if (inwardIssue != null && inwardIssue.isNull()) {
+                    linkedIssueId = inwardIssue.get("id").asText();
+                    linkedIssueType = type.get("inward").asText();
                 } else {
-                    linkedIssueType = "NoType";
+                    continue;
                 }
+
                 IssueLink issueLink = anIssueLink()
-                        .withOriginalIssueId(originalIssueId)
                         .withLinkedIssueId(linkedIssueId)
                         .withLinkedIssueType(linkedIssueType)
                         .build();

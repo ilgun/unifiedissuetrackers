@@ -1,4 +1,4 @@
-package Adaptors.JIRA;
+package Adaptors.IssueRepositories;
 
 import com.sun.jersey.api.client.Client;
 
@@ -315,6 +315,28 @@ public class DatabaseHelperMethods {
             preparedStatement.setInt(1, databaseIssueId);
             preparedStatement.setInt(2, userId);
             preparedStatement.setString(3, content);
+
+            preparedStatement.executeUpdate();
+            preparedStatement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void saveIssueLink(int issueRepositoryId, int databaseIssueId, String issueType, String linkedIssueId) {
+        try {
+            String sql = "INSERT INTO issuelinks (`issueRepositoryId`,\n" +
+                    "`issueId`,\n" +
+                    "`relatedIssueId`,\n" +
+                    "`linkType`)" +
+                    "VALUES (?, ?, ?, ?)";
+
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1,issueRepositoryId);
+            preparedStatement.setInt(2, databaseIssueId);
+            preparedStatement.setString(3, linkedIssueId);
+            preparedStatement.setString(4, issueType);
 
             preparedStatement.executeUpdate();
             preparedStatement.close();
