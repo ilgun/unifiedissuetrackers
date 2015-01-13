@@ -1,4 +1,4 @@
-package IssueTrackers;
+package Model.IssueTrackers;
 
 public class Comment {
     private final String authorName;

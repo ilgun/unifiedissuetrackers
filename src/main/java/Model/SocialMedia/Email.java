@@ -1,4 +1,4 @@
-package SocialMedia;
+package Model.SocialMedia;
 
 
 import com.google.common.base.Optional;
@@ -6,6 +6,11 @@ import com.google.common.base.Optional;
 public class Email {
     private final Optional<Boolean> isImportant;
     private final Optional<Boolean> isSpam;
+
+    private Email(Optional<Boolean> isImportant, Optional<Boolean> isSpam) {
+        this.isImportant = isImportant;
+        this.isSpam = isSpam;
+    }
 
     public static class Builder {
         private Optional<Boolean> isImportant;
@@ -31,10 +36,5 @@ public class Email {
         public Email build() {
             return new Email(isImportant, isSpam);
         }
-    }
-
-    private Email(Optional<Boolean> isImportant, Optional<Boolean> isSpam) {
-        this.isImportant = isImportant;
-        this.isSpam = isSpam;
     }
 }

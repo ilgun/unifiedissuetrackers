@@ -35,8 +35,8 @@ public class MailArchiveCrawler {
         DefaultMessageBuilder messageBuilder = getMessageBuilder();
         for (String anEmail : emails) {
             Message message = messageBuilder.parseMessage(toInputStream(anEmail, "UTF-8"));
-            if (message.getFrom() != null && message.getFrom().size() > 1) {
-                System.out.println(message.getFrom().size());
+            if (message.getFrom() != null) {
+                System.out.println(message.getFrom().get(0));
             }
         }
         is.close();

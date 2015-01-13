@@ -1,4 +1,4 @@
-package IssueTrackers;
+package Model.IssueTrackers;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 

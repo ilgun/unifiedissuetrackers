@@ -2,9 +2,9 @@ package Adaptors.IssueRepositories;
 
 
 import DatabaseConnectors.IssueTrackerConnector;
-import IssueTrackers.Comment;
-import IssueTrackers.CustomField;
-import IssueTrackers.IssueLink;
+import Model.IssueTrackers.Comment;
+import Model.IssueTrackers.CustomField;
+import Model.IssueTrackers.IssueLink;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -24,9 +24,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import static IssueTrackers.CommentBuilder.aComment;
-import static IssueTrackers.CustomFieldBuilder.aCustomField;
-import static IssueTrackers.IssueLinkBuilder.anIssueLink;
+import static Model.IssueTrackers.CommentBuilder.aComment;
+import static Model.IssueTrackers.CustomFieldBuilder.aCustomField;
+import static Model.IssueTrackers.IssueLinkBuilder.anIssueLink;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Lists.newLinkedList;
 import static com.google.common.collect.Maps.newHashMap;

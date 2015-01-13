@@ -1,4 +1,4 @@
-package SocialMedia;
+package Model.SocialMedia;
 
 import com.google.common.base.Optional;
 
@@ -11,6 +11,13 @@ public class Receiver {
     private final Optional<String> bcc;
 
 
+
+    private Receiver(String id, List<String> receivers, Optional<String> cc, Optional<String> bcc) {
+        this.id = id;
+        this.receivers = receivers;
+        this.cc = cc;
+        this.bcc = bcc;
+    }
 
     public static class Builder {
         private String id;
@@ -46,12 +53,5 @@ public class Receiver {
         public Receiver build() {
             return new Receiver(id, receivers, cc, bcc);
         }
-    }
-
-    private Receiver(String id, List<String> receivers, Optional<String> cc, Optional<String> bcc) {
-        this.id = id;
-        this.receivers = receivers;
-        this.cc = cc;
-        this.bcc = bcc;
     }
 }

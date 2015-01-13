@@ -1,8 +1,8 @@
 package Adaptors.IssueRepositories;
 
-import IssueTrackers.Comment;
-import IssueTrackers.CustomField;
-import IssueTrackers.IssueLink;
+import Model.IssueTrackers.Comment;
+import Model.IssueTrackers.CustomField;
+import Model.IssueTrackers.IssueLink;
 import org.joda.time.DateTime;
 import org.joda.time.Hours;
 

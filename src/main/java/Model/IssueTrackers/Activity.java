@@ -1,4 +1,4 @@
-package IssueTrackers;
+package Model.IssueTrackers;
 
 public class Activity {
     private final String id;
@@ -9,6 +9,16 @@ public class Activity {
     private final String transactions;
     private final String source;
 
+
+    private Activity(String id, String comments, String workLog, String history, String activities, String transactions, String source) {
+        this.id = id;
+        this.comments = comments;
+        this.worklog = workLog;
+        this.history = history;
+        this.activities = activities;
+        this.transactions = transactions;
+        this.source = source;
+    }
 
     public static class Builder {
         private String id;
@@ -64,15 +74,5 @@ public class Activity {
         public Activity build() {
             return new Activity(id, comments, worklog, history, activities, transactions, source);
         }
-    }
-
-    private Activity(String id, String comments, String workLog, String history, String activities, String transactions, String source) {
-        this.id = id;
-        this.comments = comments;
-        this.worklog = workLog;
-        this.history = history;
-        this.activities = activities;
-        this.transactions = transactions;
-        this.source = source;
     }
 }

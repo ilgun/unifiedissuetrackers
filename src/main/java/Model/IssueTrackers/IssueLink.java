@@ -1,4 +1,4 @@
-package IssueTrackers;
+package Model.IssueTrackers;
 
 public class IssueLink {
     private final String originalIssueId;

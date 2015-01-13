@@ -1,4 +1,4 @@
-package IssueTrackers;
+package Model.IssueTrackers;
 
 import org.joda.time.DateTime;
 

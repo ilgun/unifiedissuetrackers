@@ -1,4 +1,4 @@
-package SocialMedia;
+package Model.SocialMedia;
 
 import com.google.common.base.Optional;
 import org.joda.time.DateTime;
@@ -18,6 +18,24 @@ public class SocialMediaEntry {
     private final Optional<String> isReplied;
     private final Optional<Email> email;
     private final Optional<String> sentFrom;
+
+    private SocialMediaEntry(String id, String content, String sender, List<Receiver> receiver,
+                             DateTime sentDate, DateTime receivedDate, SocialMediaAttachment attachment,
+                             Optional<String> subject, Optional<String> location, Optional<String> isReplied,
+                             Optional<Email> email, Optional<String> sentFrom) {
+        this.id = id;
+        this.content = content;
+        this.sender = sender;
+        this.receiver = receiver;
+        this.sentDate = sentDate;
+        this.receivedDate = receivedDate;
+        this.attachment = attachment;
+        this.subject = subject;
+        this.location = location;
+        this.isReplied = isReplied;
+        this.email = email;
+        this.sentFrom = sentFrom;
+    }
 
     public static class Builder {
         private String id;
@@ -103,23 +121,5 @@ public class SocialMediaEntry {
         public SocialMediaEntry build() {
             return new SocialMediaEntry(id, content, sender, receiver, sentDate, receivedDate, attachment, subject, location, isReplied, email, sentFrom);
         }
-    }
-
-    private SocialMediaEntry(String id, String content, String sender, List<Receiver> receiver,
-                             DateTime sentDate, DateTime receivedDate, SocialMediaAttachment attachment,
-                             Optional<String> subject, Optional<String> location, Optional<String> isReplied,
-                             Optional<Email> email, Optional<String> sentFrom) {
-        this.id = id;
-        this.content = content;
-        this.sender = sender;
-        this.receiver = receiver;
-        this.sentDate = sentDate;
-        this.receivedDate = receivedDate;
-        this.attachment = attachment;
-        this.subject = subject;
-        this.location = location;
-        this.isReplied = isReplied;
-        this.email = email;
-        this.sentFrom = sentFrom;
     }
 }

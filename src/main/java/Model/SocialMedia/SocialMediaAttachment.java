@@ -1,8 +1,13 @@
-package SocialMedia;
+package Model.SocialMedia;
 
 public class SocialMediaAttachment {
     private final String id;
     private final byte[] content;
+
+    private SocialMediaAttachment(String id, byte[] content) {
+        this.id = id;
+        this.content = content;
+    }
 
     public static class Builder {
         private String id;
@@ -29,10 +34,5 @@ public class SocialMediaAttachment {
             return new SocialMediaAttachment(id, content);
         }
 
-    }
-
-    private SocialMediaAttachment(String id, byte[] content) {
-        this.id = id;
-        this.content = content;
     }
 }
