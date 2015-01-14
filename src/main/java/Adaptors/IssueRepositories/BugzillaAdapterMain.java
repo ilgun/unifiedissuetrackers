@@ -3,7 +3,6 @@ package Adaptors.IssueRepositories;
 import DatabaseConnectors.IssueTrackerConnector;
 import b4j.core.*;
 import b4j.core.session.BugzillaHttpSession;
-import com.j2bugzilla.base.ConnectionException;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -52,7 +51,7 @@ public class BugzillaAdapterMain {
         this.repositoryType = repositoryType;
     }
 
-    public static void main(String[] args) throws IOException, ConnectionException {
+    public static void main(String[] args) throws IOException {
         BugzillaAdapterMain main = new BugzillaAdapterMain(
                 new Client(),
                 new IssueTrackerConnector().getConnection(),
@@ -65,7 +64,7 @@ public class BugzillaAdapterMain {
         main.run();
     }
 
-    public void run() throws IOException, ConnectionException {
+    public void run() throws IOException {
         List<Integer> ids = getAllBugIds();
         System.out.println(ids.size());
         session.setBaseUrl(new URL(repositoryUrl));
@@ -137,7 +136,8 @@ public class BugzillaAdapterMain {
         ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
         String output = response.getEntity(String.class);
         JsonNode root = new ObjectMapper().readTree(output);
-        JsonNode histories = root.get("history");
+        JsonNode bugs = root.get("bugs");
+        JsonNode histories = bugs.get(0).get("history");
         if (histories == null || histories.isNull()) return;
         for (JsonNode history : histories) {
             if (history.isNull() || history.get("who") == null || history.get("who").isNull()) {
