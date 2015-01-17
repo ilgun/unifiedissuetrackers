@@ -2,7 +2,6 @@ package Adaptors.HelperMethods;
 
 import Adaptors.IssueRepositories.TableColumnName;
 import Model.SocialMedia.SocialMediaChannel;
-import com.sun.jersey.api.client.Client;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.sql.Connection;
@@ -17,7 +16,7 @@ import static com.google.common.collect.Maps.newHashMap;
 public class DatabaseHelperMethods {
     private final Connection connection;
 
-    public DatabaseHelperMethods(Connection connection, Client client) {
+    public DatabaseHelperMethods(Connection connection) {
         this.connection = connection;
     }
 

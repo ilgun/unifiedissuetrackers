@@ -89,7 +89,7 @@ public class BugzillaAdapterMain {
         client.setConnectTimeout(20000);
 
         LOGGER.info("Session LoggedIn: " + session.isLoggedIn());
-        helperMethods = new DatabaseHelperMethods(connection, client);
+        helperMethods = new DatabaseHelperMethods(connection);
         projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
         issueRepositoryId = helperMethods.getOrCreateIssueRepository(repositoryUrl, repositoryType, projectId);
 
