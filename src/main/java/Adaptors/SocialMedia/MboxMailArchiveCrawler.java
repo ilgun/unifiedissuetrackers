@@ -62,7 +62,7 @@ public class MboxMailArchiveCrawler {
         }
 
         DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(connection);
-        EMailParser parser = new EMailParser(helperMethods, projectName, projectUrl);
+        EmailParser parser = new EmailParser(helperMethods, projectName, projectUrl);
 
         for (String mboxLink : mboxUrls) {
             String mboxUrl = baseUrl + mboxLink;

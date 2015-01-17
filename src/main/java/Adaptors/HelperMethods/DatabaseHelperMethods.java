@@ -354,7 +354,38 @@ public class DatabaseHelperMethods {
 
     public void saveSocialMediaEntry(int projectId, int senderUserId, String originalEntryId, String context, SocialMediaChannel channelType, String inResponseTo,
                                      Object receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, Object location) {
+        try {
+            String sql = "INSERT INTO socialmediaentries (`projectId`,\n" +
+                    "`senderUserId`,\n" +
+                    "`originalEntryId`,\n" +
+                    "`context`,\n" +
+                    "`channelType`,\n" +
+                    "`inResponseTo`,\n" +
+                    "`receiver`,\n" +
+                    "`subject`,\n" +
+                    "`sentDate`,\n" +
+                    "`receivedDate`,\n" +
+                    "`seenDate`,\n" +
+                    "`attachments`,\n" +
+                    "`location`)" +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        throw new NotImplementedException();
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, projectId);
+            preparedStatement.setInt(2, senderUserId);
+            preparedStatement.setString(3, originalEntryId);
+            preparedStatement.setString(4, context);
+            preparedStatement.setString(5, channelType.name());
+            preparedStatement.setString(6, inResponseTo);
+            preparedStatement.setString(7, null);
+            preparedStatement.setString(8, subject);
+            preparedStatement.setString(9, sentDate);
+
+            preparedStatement.executeUpdate();
+            preparedStatement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 }

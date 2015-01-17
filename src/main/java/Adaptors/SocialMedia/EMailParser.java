@@ -1,6 +1,7 @@
 package Adaptors.SocialMedia;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
+import Model.SocialMedia.SocialMediaChannel;
 import org.apache.commons.io.IOUtils;
 import org.apache.james.mime4j.dom.BinaryBody;
 import org.apache.james.mime4j.dom.Message;
@@ -20,18 +21,20 @@ import static com.google.common.base.Splitter.on;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.apache.commons.io.IOUtils.toInputStream;
 
-public class EMailParser {
+public class EmailParser {
     private final DatabaseHelperMethods helperMethods;
     private final String projectName;
     private final String projectUrl;
 
-    public EMailParser(DatabaseHelperMethods helperMethods, String projectName, String projectUrl) {
+    public EmailParser(DatabaseHelperMethods helperMethods, String projectName, String projectUrl) {
         this.helperMethods = helperMethods;
         this.projectName = projectName;
         this.projectUrl = projectUrl;
     }
 
     public void parseAndSaveEmails(String emailsInMbox) throws IOException {
+        int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
+
         DefaultMessageBuilder messageBuilder = getMessageBuilder();
         List<String> emails = newArrayList(on("From ").split(emailsInMbox));
 
@@ -56,14 +59,13 @@ public class EMailParser {
                     BinaryBody body = (BinaryBody) message.getBody();
                     context = IOUtils.toString(body.getInputStream());
                 }
-
-                int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
                 int userId = helperMethods.getOrCreateSocialMediaUser(fromName, fromEmail);
-                //TODO check the order
-                //helperMethods.saveSocialMediaEntry(projectId,userId, messageId, context, SocialMediaChannel.EMAIL, to, null, , subject, sentDate, null, null, null, null);
+
+                helperMethods.saveSocialMediaEntry(projectId, userId, messageId, context, SocialMediaChannel.EMAIL, to, null, subject, sentDate, null, null, null, null);
             }
         }
     }
+
     private DefaultMessageBuilder getMessageBuilder() {
         DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
         BodyFactory bodyFactory = new BasicBodyFactory();

@@ -79,7 +79,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
             String output = response.getEntity(String.class);
 
-            helperMethods = new DatabaseHelperMethods(connection, client);
+            helperMethods = new DatabaseHelperMethods(connection);
             projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
             issueRepositoryId = helperMethods.getOrCreateIssueRepository(repositoryUrl, repositoryType, projectId);
 
