@@ -12,6 +12,10 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
 import org.joda.time.Hours;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -32,6 +36,7 @@ import static com.google.common.collect.Maps.newHashMap;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.lang.Integer.parseInt;
 import static java.sql.Types.INTEGER;
+import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
 import static org.apache.log4j.Logger.getLogger;
@@ -127,7 +132,7 @@ public class BugzillaAdapterMain {
                 issueAddress, release, resolutionStatus, originalEstimate);
 
         saveIssueLinks(links, databaseIssueId);
-        //saveHistory(issueId, databaseIssueId);
+        saveHistory(parseInt(issueId), databaseIssueId);
         saveComments(comments, databaseIssueId);
     }
 
@@ -148,41 +153,39 @@ public class BugzillaAdapterMain {
         }
     }
 
-    //TODO do this
-    public void saveHistory(String issueId, int databaseIssueId) {
-        WebResource resource = client.resource(repositoryUrl + "show_activity.cgi?id=" + issueId);
-        ClientResponse response = resource.accept("application/xml").get(ClientResponse.class);
+    public void saveHistory(int issueId, int databaseIssueId) throws IOException {
+        String historyUrl = repositoryUrl + "/show_activity.cgi?id=" + issueId;
+        WebResource resource = client.resource(historyUrl);
+        ClientResponse response = resource.accept(TEXT_HTML).get(ClientResponse.class);
         String output = response.getEntity(String.class);
-    }
 
-    public void saveHistoryForRest(String issueId, int databaseIssueId) throws IOException {
-        WebResource resource = client.resource(repositoryUrl + "/rest/bug/" + issueId + "/history");
-        ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
-        String output = response.getEntity(String.class);
-        JsonNode root = new ObjectMapper().readTree(output);
-        JsonNode bugs = root.get("bugs");
-        JsonNode histories = bugs.get(0).get("history");
-        if (histories == null || histories.isNull()) return;
-        for (JsonNode history : histories) {
-            if (history.isNull() || history.get("who") == null || history.get("who").isNull()) {
-                continue;
-            }
-            String author = null;
-            if (!history.get("who").isNull()) {
-                author = history.get("who").asText();
-            }
-            String date = null;
-            if (!history.get("when").isNull()) {
-                date = history.get("when").asText();
-            }
+        Document doc = Jsoup.parse(output);
+        Elements elements = doc.getElementsByTag("tr");
 
-            int userId = helperMethods.createOrGetRepositoryUser(author, author, issueRepositoryId);
-            JsonNode changes = history.get("changes");
-            for (JsonNode anItem : changes) {
-                String field = anItem.get("field_name").asText();
-                String from = anItem.get("removed").asText();
-                String to = anItem.get("added").asText();
+        String username;
+        String date = null;
+        int userId = 0;
+        int count = 0;
+        for (Element anElement : elements) {
+            count++;
+            if (count < 4) continue;
+            Elements tds = anElement.getElementsByTag("td");
+
+            // New User Found
+            if (tds.size() > 4) {
+                username = tds.get(0).text();
+                date = tds.get(1).text();
+                String field = tds.get(2).text();
+                String from = tds.get(3).text();
+                String to = tds.get(4).text();
+                userId = helperMethods.createOrGetRepositoryUser(username, username, issueRepositoryId);
                 helperMethods.saveHistoryIfNotExists(databaseIssueId, from, to, field, userId, date);
+            } // User is same however, there is new activity.
+            else {
+                String what = tds.get(0).text();
+                String removed = tds.get(1).text();
+                String added = tds.get(2).text();
+                helperMethods.saveHistoryIfNotExists(databaseIssueId, removed, added, what, userId, date);
             }
         }
     }
@@ -362,5 +365,40 @@ public class BugzillaAdapterMain {
             }
         }
         return allBugIds;
+    }
+
+    /*
+    * This method is designed for Bugzilla repositories which support REST API.
+    * */
+    public void saveHistoryForRest(String issueId, int databaseIssueId) throws IOException {
+        WebResource resource = client.resource(repositoryUrl + "/rest/bug/" + issueId + "/history");
+        ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
+        String output = response.getEntity(String.class);
+        JsonNode root = new ObjectMapper().readTree(output);
+        JsonNode bugs = root.get("bugs");
+        JsonNode histories = bugs.get(0).get("history");
+        if (histories == null || histories.isNull()) return;
+        for (JsonNode history : histories) {
+            if (history.isNull() || history.get("who") == null || history.get("who").isNull()) {
+                continue;
+            }
+            String author = null;
+            if (!history.get("who").isNull()) {
+                author = history.get("who").asText();
+            }
+            String date = null;
+            if (!history.get("when").isNull()) {
+                date = history.get("when").asText();
+            }
+
+            int userId = helperMethods.createOrGetRepositoryUser(author, author, issueRepositoryId);
+            JsonNode changes = history.get("changes");
+            for (JsonNode anItem : changes) {
+                String field = anItem.get("field_name").asText();
+                String from = anItem.get("removed").asText();
+                String to = anItem.get("added").asText();
+                helperMethods.saveHistoryIfNotExists(databaseIssueId, from, to, field, userId, date);
+            }
+        }
     }
 }
