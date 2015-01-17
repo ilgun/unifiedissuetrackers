@@ -12,7 +12,6 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
 import org.joda.time.Hours;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -40,6 +39,7 @@ import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
 import static org.apache.log4j.Logger.getLogger;
+import static org.jsoup.Jsoup.parse;
 
 public class BugzillaAdapterMain {
     private static final Logger LOGGER = getLogger(BugzillaAdapterMain.class);
@@ -95,14 +95,13 @@ public class BugzillaAdapterMain {
 
         for (Integer id : ids) {
             doForAnIssue(id);
-
-            totalCount.incrementAndGet();
             logCount();
         }
         LOGGER.info("Finished");
     }
 
     private void logCount() {
+        totalCount.incrementAndGet();
         if ((totalCount.get() % 100) == 0) {
             LOGGER.info(totalCount.get());
         }
@@ -134,6 +133,7 @@ public class BugzillaAdapterMain {
         int databaseIssueId = saveIssue(issueId, issueType, summary, reporterUserId, createdDate, description, priorityId, status, projectName, components, dueDate, assigneeUserId, currentEstimate,
                 issueAddress, release, resolutionStatus, originalEstimate);
 
+        if (databaseIssueId == 0) return;
         saveIssueLinks(links, databaseIssueId);
         saveHistory(parseInt(issueId), databaseIssueId);
         saveComments(comments, databaseIssueId);
@@ -162,7 +162,7 @@ public class BugzillaAdapterMain {
         ClientResponse response = resource.accept(TEXT_HTML).get(ClientResponse.class);
         String output = response.getEntity(String.class);
 
-        Document doc = Jsoup.parse(output);
+        Document doc = parse(output);
         Elements elements = doc.getElementsByTag("tr");
 
         String username;
@@ -237,7 +237,7 @@ public class BugzillaAdapterMain {
         stringMap.put(issueAddress, TableColumnName.issueAddress);
 
         int foundIssueId = helperMethods.checkIfExits("issues", stringMap, intMap);
-        if (foundIssueId != 0) return foundIssueId;
+        if (foundIssueId != 0) return 0;
 
         int newIssueId = 0;
         try {
