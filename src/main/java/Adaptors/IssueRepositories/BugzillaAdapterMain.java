@@ -182,13 +182,13 @@ public class BugzillaAdapterMain {
                 String from = tds.get(3).text();
                 String to = tds.get(4).text();
                 userId = helperMethods.createOrGetRepositoryUser(username, username, issueRepositoryId);
-                helperMethods.saveHistoryIfNotExists(databaseIssueId, from, to, field, userId, date);
+                helperMethods.saveHistory(databaseIssueId, from, to, field, userId, date);
             } // User is same however, there is new activity.
             else {
                 String what = tds.get(0).text();
                 String removed = tds.get(1).text();
                 String added = tds.get(2).text();
-                helperMethods.saveHistoryIfNotExists(databaseIssueId, removed, added, what, userId, date);
+                helperMethods.saveHistory(databaseIssueId, removed, added, what, userId, date);
             }
         }
     }
@@ -231,6 +231,7 @@ public class BugzillaAdapterMain {
     public int saveIssue(String issueId, String issueType, String summary, int reporterUserId, String createdDate, String description, int priorityId, String status, String projectName,
                          Collection<Component> componentNames, DateTime dueDate, int assigneeUserId, Hours currentEstimate, String issueAddress, Collection<Version> release, String resolutionStatus,
                          Hours originalEstimate) {
+
         Map<Integer, TableColumnName> intMap = newHashMap();
         intMap.put(Integer.valueOf(issueId), TableColumnName.issueId);
         Map<String, TableColumnName> stringMap = newHashMap();
@@ -400,7 +401,7 @@ public class BugzillaAdapterMain {
                 String field = anItem.get("field_name").asText();
                 String from = anItem.get("removed").asText();
                 String to = anItem.get("added").asText();
-                helperMethods.saveHistoryIfNotExists(databaseIssueId, from, to, field, userId, date);
+                helperMethods.saveHistory(databaseIssueId, from, to, field, userId, date);
             }
         }
     }

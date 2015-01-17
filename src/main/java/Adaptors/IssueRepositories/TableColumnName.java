@@ -13,5 +13,7 @@ public enum TableColumnName {
     issueAddress,
     description,
     value,
+    userId,
+    accountName,
     customFieldId
 }

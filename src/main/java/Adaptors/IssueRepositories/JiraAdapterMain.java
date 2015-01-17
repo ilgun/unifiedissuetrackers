@@ -92,8 +92,6 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             }
             startPoint = startPoint + 100;
             System.out.println(startPoint);
-            response.close();
-            client.destroy();
         }
     }
 
@@ -176,7 +174,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
                 String field = anItem.get("field").asText();
                 String from = anItem.get("fromString").asText();
                 String to = anItem.get("toString").asText();
-                helperMethods.saveHistoryIfNotExists(databaseIssueId, from, to, field, userId, date);
+                helperMethods.saveHistory(databaseIssueId, from, to, field, userId, date);
             }
         }
     }
@@ -186,7 +184,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         for (CustomField aCustomField : customFields) {
             if (aCustomField.getDescription() == null) continue;
             int customFieldId = helperMethods.getOrCreateCustomField(issueRepositoryId, aCustomField.getDescription());
-            helperMethods.getOrCreateCustomFieldValue(issueId, customFieldId, aCustomField.getValue());
+            helperMethods.saveCustomFieldValue(issueId, customFieldId, aCustomField.getValue());
         }
     }
 

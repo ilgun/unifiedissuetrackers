@@ -103,7 +103,7 @@ public class DatabaseHelperMethods {
         if (existingId != 0) return existingId;
 
         try {
-            int userId = createUser(authorName);
+            int userId = getOrCreateUser(authorName);
             int userNameTableId = createUserName(userId, authorEmail);
             String sql = "INSERT INTO issuerepositoryuser (`userId`,\n" +
                     "`issueRepositoryId`,\n" +
@@ -127,6 +127,14 @@ public class DatabaseHelperMethods {
 
     private int createUserName(int userId, String authorEmail) {
         int userNameId = 0;
+        Map<String, TableColumnName> authorEmailMap = newHashMap();
+        authorEmailMap.put(authorEmail, TableColumnName.userId);
+
+        Map<Integer, TableColumnName> accountNameMap = newHashMap();
+        accountNameMap.put(userId, TableColumnName.accountName);
+
+        int foundId = checkIfExits("username", authorEmailMap, accountNameMap);
+        if (foundId != 0) return foundId;
 
         try {
             String sql = "INSERT INTO username (`userId`,\n" +
@@ -147,11 +155,14 @@ public class DatabaseHelperMethods {
         return userNameId;
     }
 
-    private int createUser(String authorName) {
+    private int getOrCreateUser(String authorName) {
         int userId = 0;
         Map<String, TableColumnName> values = newHashMap();
         values.put(authorName, TableColumnName.name);
-        checkIfExits("user", values);
+
+        int user = checkIfExits("user", values);
+        if (user != 0) return user;
+
         try {
             String sql = "INSERT INTO user (`name`)" +
                     "VALUES (?)";
@@ -169,7 +180,7 @@ public class DatabaseHelperMethods {
         return userId;
     }
 
-    public void saveHistoryIfNotExists(int issueId, String from, String to, String field, int userId, String date) {
+    public void saveHistory(int issueId, String from, String to, String field, int userId, String date) {
         try {
             String sql = "INSERT INTO history (`issueId`,\n" +
                     "`from`,\n" +
@@ -285,7 +296,7 @@ public class DatabaseHelperMethods {
         return newCustomFieldId;
     }
 
-    public void getOrCreateCustomFieldValue(int issueId, int customFieldId, String value) {
+    public void saveCustomFieldValue(int issueId, int customFieldId, String value) {
         try {
             String sql = "INSERT INTO customfieldvalue (`issueId`,\n" +
                     "`customFieldId`,\n" +
