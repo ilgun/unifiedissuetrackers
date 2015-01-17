@@ -1,16 +1,21 @@
 package Adaptors.IssueRepositories;
 
+import Adaptors.HelperMethods.DatabaseHelperMethods;
 import DatabaseConnectors.IssueTrackerConnector;
 import b4j.core.*;
 import b4j.core.session.BugzillaHttpSession;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
 import org.joda.time.Hours;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
 import java.sql.Connection;
@@ -24,11 +29,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
+import static java.lang.ClassLoader.getSystemClassLoader;
+import static java.lang.Integer.parseInt;
 import static java.sql.Types.INTEGER;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
+import static org.apache.log4j.Logger.getLogger;
 
 public class BugzillaAdapterMain {
+    private static final Logger LOGGER = getLogger(BugzillaAdapterMain.class);
     private final AtomicInteger totalCount = new AtomicInteger();
     private final Client client;
     private final Connection connection;
@@ -56,21 +65,22 @@ public class BugzillaAdapterMain {
                 new Client(),
                 new IssueTrackerConnector().getConnection(),
                 new BugzillaHttpSession(),
-                "BUGZILLA",
-                "https://bugzilla.mozilla.org",
-                "https://bugzilla.mozilla.org",
+                "PULP",
+                "http://www.pulpproject.org",
+                "https://bugzilla.redhat.com",
                 "BUGZILLA");
 
         main.run();
     }
 
     public void run() throws IOException {
-        List<Integer> ids = getAllBugIds();
-        System.out.println(ids.size());
+        List<Integer> ids = getAllBugsIdsFromFile();
+        LOGGER.info(ids.size());
         session.setBaseUrl(new URL(repositoryUrl));
         session.setBugzillaBugClass(DefaultIssue.class);
         session.open();
 
+        LOGGER.info("Session LoggedIn: " + session.isLoggedIn());
         helperMethods = new DatabaseHelperMethods(connection, client);
         projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
         issueRepositoryId = helperMethods.getOrCreateIssueRepository(repositoryUrl, repositoryType, projectId);
@@ -79,7 +89,14 @@ public class BugzillaAdapterMain {
             doForAnIssue(id);
 
             totalCount.incrementAndGet();
-            if ((totalCount.get() % 100) == 0) System.out.println(totalCount.get());
+            logCount();
+        }
+        LOGGER.info("Finished");
+    }
+
+    private void logCount() {
+        if ((totalCount.get() % 100) == 0) {
+            LOGGER.info(totalCount.get());
         }
     }
 
@@ -110,7 +127,7 @@ public class BugzillaAdapterMain {
                 issueAddress, release, resolutionStatus, originalEstimate);
 
         saveIssueLinks(links, databaseIssueId);
-        saveHistory(issueId, databaseIssueId);
+        //saveHistory(issueId, databaseIssueId);
         saveComments(comments, databaseIssueId);
     }
 
@@ -131,7 +148,14 @@ public class BugzillaAdapterMain {
         }
     }
 
-    public void saveHistory(String issueId, int databaseIssueId) throws IOException {
+    //TODO do this
+    public void saveHistory(String issueId, int databaseIssueId) {
+        WebResource resource = client.resource(repositoryUrl + "show_activity.cgi?id=" + issueId);
+        ClientResponse response = resource.accept("application/xml").get(ClientResponse.class);
+        String output = response.getEntity(String.class);
+    }
+
+    public void saveHistoryForRest(String issueId, int databaseIssueId) throws IOException {
         WebResource resource = client.resource(repositoryUrl + "/rest/bug/" + issueId + "/history");
         ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
         String output = response.getEntity(String.class);
@@ -289,11 +313,37 @@ public class BugzillaAdapterMain {
         return newIssueId;
     }
 
-    private List<Integer> getAllBugIds() throws IOException {
+    private List<Integer> getAllBugsIdsFromFile() throws IOException {
+        List<Integer> ids = newArrayList();
+        String line = "";
+
+        File csvFile = new File(getFilePath("bugs-2015-01-15.csv"));
+        BufferedReader br = new BufferedReader(new FileReader(csvFile));
+        //For the first line
+        br.readLine();
+        while ((line = br.readLine()) != null) {
+            ids.add(parseInt(line));
+        }
+        return ids;
+    }
+
+    //example query
+    //https://bugzilla.redhat.com/buglist.cgi?columnlist=&limit=0&product=pulp&query_format=advanced&ctype=csv&human=1
+    private String getFilePath(String fileName) {
+        return getSystemClassLoader().getResource(fileName).getPath();
+    }
+
+    /**
+     * This method is designed for Bugzilla repositories which support REST API.
+     *
+     * @return
+     * @throws IOException
+     */
+    private List<Integer> getAllBugIdsForRestAPI() throws IOException {
         int startPoint = 0;
         List<Integer> allBugIds = newArrayList();
         while (true) {
-            WebResource resource = client.resource("https://bugzilla.mozilla.org/rest/bug?include_fields=id&limit=0&product=Bugzilla&o1=greaterthan&f1=bug_id&v1=" + startPoint);
+            WebResource resource = client.resource(repositoryUrl + "/rest/bug?include_fields=id&limit=0&product=" + projectName + "&o1=greaterthan&f1=bug_id&v1=" + startPoint);
             ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
             String output = response.getEntity(String.class);
 

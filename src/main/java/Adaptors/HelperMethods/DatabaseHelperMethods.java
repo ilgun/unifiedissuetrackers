@@ -1,6 +1,9 @@
-package Adaptors.IssueRepositories;
+package Adaptors.HelperMethods;
 
+import Adaptors.IssueRepositories.TableColumnName;
+import Model.SocialMedia.SocialMediaChannel;
 import com.sun.jersey.api.client.Client;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -333,7 +336,7 @@ public class DatabaseHelperMethods {
                     "VALUES (?, ?, ?, ?)";
 
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.setInt(1,issueRepositoryId);
+            preparedStatement.setInt(1, issueRepositoryId);
             preparedStatement.setInt(2, databaseIssueId);
             preparedStatement.setString(3, linkedIssueId);
             preparedStatement.setString(4, issueType);
@@ -344,5 +347,15 @@ public class DatabaseHelperMethods {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+
+    public int getOrCreateSocialMediaUser(String name, String email) {
+        throw new NotImplementedException();
+    }
+
+    public void saveSocialMediaEntry(int projectId, int senderUserId, String originalEntryId, String context, SocialMediaChannel channelType, String inResponseTo,
+                                     Object receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, Object location) {
+
+        throw new NotImplementedException();
     }
 }

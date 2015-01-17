@@ -1,6 +1,7 @@
 package Adaptors.IssueRepositories;
 
 
+import Adaptors.HelperMethods.DatabaseHelperMethods;
 import DatabaseConnectors.IssueTrackerConnector;
 import Model.IssueTrackers.Comment;
 import Model.IssueTrackers.CustomField;

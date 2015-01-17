@@ -83,9 +83,9 @@
             <version>2.0.1</version>
         </dependency>
         <dependency>
-            <groupId>com.j2bugzilla</groupId>
-            <artifactId>j2bugzilla</artifactId>
-            <version>2.2.1</version>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.0</version>
         </dependency>
     </dependencies>
 </project>
