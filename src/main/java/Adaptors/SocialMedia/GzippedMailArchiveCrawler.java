@@ -19,12 +19,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static java.nio.charset.Charset.forName;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.log4j.Logger.getLogger;
 import static org.jsoup.Jsoup.parse;
 
-public class MboxMailArchiveCrawler {
-    private static final Logger LOGGER = getLogger(MboxMailArchiveCrawler.class);
+public class GzippedMailArchiveCrawler {
+    private static final Logger LOGGER = getLogger(GzippedMailArchiveCrawler.class);
     private final AtomicInteger emailFilesCount = new AtomicInteger();
     private final String baseUrl;
     private final Connection connection;
@@ -32,7 +33,7 @@ public class MboxMailArchiveCrawler {
     private final String projectName;
     private final String projectUrl;
 
-    public MboxMailArchiveCrawler(Client client, Connection connection, String projectName, String projectUrl, String baseUrl) {
+    public GzippedMailArchiveCrawler(Client client, Connection connection, String projectName, String projectUrl, String baseUrl) {
         this.baseUrl = baseUrl;
         this.connection = connection;
         this.client = client;
@@ -41,17 +42,17 @@ public class MboxMailArchiveCrawler {
     }
 
     public static void main(String[] args) throws Exception {
-        MboxMailArchiveCrawler crawler = new MboxMailArchiveCrawler(
+        GzippedMailArchiveCrawler crawler = new GzippedMailArchiveCrawler(
                 new Client(),
                 new IssueTrackerConnector().getConnection(),
-                "HIVE",
-                "https://hive.apache.org",
-                "http://mail-archives.apache.org/mod_mbox/hive-dev/");
+                "PULP",
+                "http://www.pulpproject.org",
+                "https://www.redhat.com/archives/pulp-list/");
 
         crawler.run();
     }
 
-    public void run() throws IOException {
+    public void run() throws IOException, InterruptedException {
         WebResource resource = client.resource(baseUrl);
         ClientResponse response = resource.accept(TEXT_HTML).get(ClientResponse.class);
         String output = response.getEntity(String.class);
@@ -59,40 +60,43 @@ public class MboxMailArchiveCrawler {
         Document doc = parse(output);
         Elements elements = doc.getElementsByTag("a");
 
-        Set<String> mboxUrls = newHashSet();
+        Set<String> urls = newHashSet();
         for (Element anElement : elements) {
-            String mboxUrl = anElement.attributes().get("href");
-            if (mboxUrl.startsWith("20")) {
-                mboxUrls.add(mboxUrl.split("/")[0]);
+            String url = anElement.attributes().get("href");
+            if (url.endsWith("txt.gz")) {
+                urls.add(url);
             }
         }
 
         DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(connection);
         EmailParser parser = new EmailParser(helperMethods, projectName, projectUrl);
 
-        LOGGER.info("Total Email Files: " + mboxUrls.size());
+        LOGGER.info("Total Email Files: " + urls.size());
 
-        for (String mboxLink : mboxUrls) {
-            String emailsInMbox = doForeachMboxFile(0, 5, mboxLink);
-            if (emailsInMbox == null) continue;
-            parser.parseAndSaveEmails(emailsInMbox);
+        for (String url : urls) {
+            String emails = doForEachFile(0, 5, url);
+            if (emails == null) continue;
+            parser.parseAndSaveEmails(emails);
             logCount();
         }
         LOGGER.info("Process Finished");
     }
 
-    private String doForeachMboxFile(int i, int limit, String mboxLink) {
-        String mboxUrl = baseUrl + mboxLink;
-        String emailsInMbox = null;
-        try (InputStream is = new URL(mboxUrl).openStream()) {
-            emailsInMbox = IOUtils.toString(is, "UTF-8");
+    private String doForEachFile(int i, int limit, String url) throws IOException {
+        String fileUrl = baseUrl + url;
+        String emails = null;
+
+        try (InputStream is = new URL(fileUrl).openStream()) {
+            emails = IOUtils.toString(is, forName("UTF-8"));
         } catch (IOException e) {
             if (i >= limit) {
                 e.printStackTrace();
+                return emails;
+            } else {
+                doForEachFile(++i, limit, url);
             }
-            doForeachMboxFile(++i, limit, mboxLink);
         }
-        return emailsInMbox;
+        return emails;
     }
 
     private void logCount() {
