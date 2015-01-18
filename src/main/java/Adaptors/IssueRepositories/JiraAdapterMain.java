@@ -213,7 +213,6 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         String jsonString = response.getEntity(String.class);
         JsonNode root = new ObjectMapper().readTree(jsonString);
         response.close();
-        client.destroy();
         return root.get("description").asText();
     }
 
@@ -320,6 +319,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
                 ResultSet generatedKeys = preparedStatement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     newIssueId = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
             preparedStatement.close();
@@ -431,7 +431,6 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             }
         }
         response.close();
-        client.destroy();
         return commentsList;
     }
 
