@@ -9,6 +9,7 @@ import Model.IssueTrackers.IssueLink;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
@@ -34,10 +35,12 @@ import static com.google.common.collect.Maps.newHashMap;
 import static java.sql.Types.INTEGER;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
+import static org.apache.log4j.Logger.getLogger;
 import static org.joda.time.DateTime.parse;
 
 public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNode> {
 
+    private static final Logger LOGGER = getLogger(JiraAdapterMain.class);
     private final Client client;
     private final Connection connection;
     private final String repositoryUrl;
@@ -91,8 +94,9 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
                 saveIssue(issues.get(i), names);
             }
             startPoint = startPoint + 100;
-            System.out.println(startPoint);
+            LOGGER.info(startPoint);
         }
+        LOGGER.info("Finished");
     }
 
     private void saveIssue(JsonNode root, JsonNode names) throws IOException {
@@ -115,8 +119,10 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         int reporterUserId = getReporterId(fields);
         int assigneeUserId = getAssigneeId(fields);
         int priorityId = getPriorityId(fields, issueRepositoryId);
+
         int databaseIssueId = saveIssue(root, issueId, summary, issueType, reporterUserId, createdDate, description, priorityId, status,
                 projectName, componentNames, dueDate, assigneeUserId, currentEstimate, issueAddress, release, resolutionStatus, originalEstimate);
+        if (databaseIssueId == 0) return;
 
         saveHistory(root, databaseIssueId);
 
@@ -198,7 +204,6 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         String id = priority.get("id").asText();
         String priorityName = priority.get("name").asText();
         String description = getPriorityDescription(id);
-
         return helperMethods.createOrGetPriorityId(priorityName, description, issueRepositoryId);
     }
 
@@ -235,6 +240,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     public int saveIssue(JsonNode root, String issueId, String summary, String issueType, int reporterUserId, DateTime createdDate, String description, int priorityId, String status,
                          String projectName, List<String> componentNames, DateTime dueDate, int assigneeUserId, Hours currentEstimate, String issueAddress, String release,
                          String resolutionStatus, Hours originalEstimate) {
+
         Map<Integer, TableColumnName> intMap = newHashMap();
         intMap.put(Integer.valueOf(issueId), TableColumnName.issueId);
         Map<String, TableColumnName> stringMap = newHashMap();
@@ -358,7 +364,6 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         JsonNode assignee = fields.get("assignee");
         if (!assignee.isNull() && assignee.get("name") != null) {
             String assigneeName = assignee.get("name").asText();
-            //String assigneeDisplayName = assignee.get("displayName").asText();
             String assigneeEmail = assignee.get("emailAddress").asText();
             return helperMethods.createOrGetRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
         } else {

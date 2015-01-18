@@ -4,10 +4,7 @@ import Adaptors.IssueRepositories.TableColumnName;
 import Model.SocialMedia.SocialMediaChannel;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -32,6 +29,8 @@ public class DatabaseHelperMethods {
             if (rs.next()) {
                 output = rs.getInt("id");
             }
+            rs.close();
+            preparedStatement.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -57,6 +56,7 @@ public class DatabaseHelperMethods {
                 output = rs.getInt("id");
             }
             rs.close();
+            preparedStatement.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -65,6 +65,7 @@ public class DatabaseHelperMethods {
 
     public int getOrCreateProject(String projectName, String projectUrl) {
         int projectId = 0;
+
         Map<String, TableColumnName> mappedValues = newHashMap();
         mappedValues.put(projectName, TableColumnName.projectName);
 
@@ -82,9 +83,12 @@ public class DatabaseHelperMethods {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     projectId = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
+            statement.close();
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return projectId;
@@ -117,9 +121,12 @@ public class DatabaseHelperMethods {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     output = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
+            statement.close();
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return output;
@@ -127,6 +134,7 @@ public class DatabaseHelperMethods {
 
     private int createUserName(int userId, String authorEmail) {
         int userNameId = 0;
+
         Map<String, TableColumnName> authorEmailMap = newHashMap();
         authorEmailMap.put(authorEmail, TableColumnName.userId);
 
@@ -147,9 +155,12 @@ public class DatabaseHelperMethods {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     userNameId = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
+            statement.close();
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return userNameId;
@@ -157,6 +168,7 @@ public class DatabaseHelperMethods {
 
     private int getOrCreateUser(String authorName) {
         int userId = 0;
+
         Map<String, TableColumnName> values = newHashMap();
         values.put(authorName, TableColumnName.name);
 
@@ -172,8 +184,10 @@ public class DatabaseHelperMethods {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     userId = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
+            statement.close();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -208,6 +222,7 @@ public class DatabaseHelperMethods {
 
     public int getOrCreateIssueRepository(String repositoryUrl, String repositoryType, int projectId) {
         int repositoryId = 0;
+
         Map<String, TableColumnName> mappedValues = newHashMap();
         mappedValues.put(repositoryUrl, TableColumnName.issueRepositoryUrl);
 
@@ -227,9 +242,12 @@ public class DatabaseHelperMethods {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     repositoryId = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
+            statement.close();
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return repositoryId;
@@ -260,8 +278,10 @@ public class DatabaseHelperMethods {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     output = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
+            statement.close();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -270,10 +290,12 @@ public class DatabaseHelperMethods {
 
     public int getOrCreateCustomField(int issueRepositoryId, String description) {
         int newCustomFieldId = 0;
+
         Map<String, TableColumnName> stringMap = newHashMap();
         stringMap.put(description, TableColumnName.description);
         Map<Integer, TableColumnName> intMap = newHashMap();
         intMap.put(issueRepositoryId, TableColumnName.issueRepositoryId);
+
         int customFieldId = checkIfExits("customfield", stringMap, intMap);
         if (customFieldId != 0) return customFieldId;
 
@@ -288,9 +310,12 @@ public class DatabaseHelperMethods {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
                     newCustomFieldId = generatedKeys.getInt(1);
+                    generatedKeys.close();
                 }
             }
+            statement.close();
         } catch (SQLException e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return newCustomFieldId;
@@ -394,6 +419,19 @@ public class DatabaseHelperMethods {
 
             preparedStatement.executeUpdate();
             preparedStatement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getLastInsertedId() {
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("select MAX(id) as last_id FROM issues")) {
+            rs.next();
+            int lastId = rs.getInt("last_id");
+
+            return lastId;
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);

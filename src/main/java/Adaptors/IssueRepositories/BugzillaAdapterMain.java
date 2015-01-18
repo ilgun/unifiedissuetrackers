@@ -65,7 +65,7 @@ public class BugzillaAdapterMain {
         this.repositoryType = repositoryType;
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, SQLException {
         BugzillaAdapterMain main = new BugzillaAdapterMain(
                 new Client(),
                 new IssueTrackerConnector().getConnection(),
@@ -78,7 +78,7 @@ public class BugzillaAdapterMain {
         main.run();
     }
 
-    public void run() throws IOException {
+    public void run() throws IOException, SQLException {
         List<Integer> ids = getAllBugsIdsFromFile();
         LOGGER.info(ids.size());
         session.setBaseUrl(new URL(repositoryUrl));
