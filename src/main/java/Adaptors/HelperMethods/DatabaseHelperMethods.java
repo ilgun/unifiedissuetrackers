@@ -2,7 +2,6 @@ package Adaptors.HelperMethods;
 
 import Adaptors.IssueRepositories.TableColumnName;
 import Model.SocialMedia.SocialMediaChannel;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.sql.*;
 import java.util.Map;
@@ -37,20 +36,30 @@ public class DatabaseHelperMethods {
         return output;
     }
 
-    public int checkIfExits(String tableName, Map<String, TableColumnName> stringField, Map<Integer, TableColumnName> idField) {
+    /*
+    * Supports multiple string entries but not integer entries.
+    * */
+    public int checkIfExits(String tableName, Map<String, TableColumnName> stringFields, Map<Integer, TableColumnName> idField) {
         int output = 0;
         try {
             ResultSet rs;
             StringBuilder sqlBuilder = new StringBuilder();
             sqlBuilder.append("Select id from ").append(tableName);
             Entry<Integer, TableColumnName> intEntry = idField.entrySet().iterator().next();
-            Entry<String, TableColumnName> stringEntry = stringField.entrySet().iterator().next();
             sqlBuilder.append(" where ").append(intEntry.getValue()).append(" = ? ");
-            sqlBuilder.append(" AND ").append(stringEntry.getValue()).append(" = ?");
+            for (Entry<String, TableColumnName> stringEntry : stringFields.entrySet()) {
+                sqlBuilder.append(" AND ").append(stringEntry.getValue()).append(" = ?");
+            }
 
             PreparedStatement preparedStatement = connection.prepareStatement(sqlBuilder.toString());
             preparedStatement.setInt(1, intEntry.getKey());
-            preparedStatement.setString(2, stringEntry.getKey());
+
+            int entryCount = 2;
+            for (Entry<String, TableColumnName> stringEntry : stringFields.entrySet()) {
+                preparedStatement.setString(entryCount, stringEntry.getKey());
+                entryCount++;
+            }
+
             rs = preparedStatement.executeQuery();
             if (rs.next()) {
                 output = rs.getInt("id");
@@ -384,12 +393,46 @@ public class DatabaseHelperMethods {
         }
     }
 
-    public int getOrCreateSocialMediaUser(String name, String email) {
-        throw new NotImplementedException();
+    public int getOrCreateSocialMediaUser(int projectId, String name, String email) {
+        int userId = 0;
+
+        Map<Integer, TableColumnName> projectIdMap = newHashMap();
+        projectIdMap.put(projectId, TableColumnName.projectId);
+
+        Map<String, TableColumnName> stringMap = newHashMap();
+        stringMap.put(name, TableColumnName.userName);
+        stringMap.put(email, TableColumnName.userEmail);
+
+        int user = checkIfExits("socialmediauser", stringMap, projectIdMap);
+        if (user != 0) return user;
+
+        try {
+            String sql = "INSERT INTO socialmediauser (`projectId`,\n" +
+                    "`userName`,\n" +
+                    "`userEmail`)" +
+                    "VALUES (?, ?, ?)";
+            PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
+            statement.setInt(1, projectId);
+            statement.setString(2, name);
+            statement.setString(3, email);
+
+            if (statement.executeUpdate() > 0) {
+                ResultSet generatedKeys = statement.getGeneratedKeys();
+                if (null != generatedKeys && generatedKeys.next()) {
+                    userId = generatedKeys.getInt(1);
+                    generatedKeys.close();
+                }
+            }
+            statement.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+        return userId;
     }
 
     public void saveSocialMediaEntry(int projectId, int senderUserId, String originalEntryId, String context, SocialMediaChannel channelType, String inResponseTo,
-                                     Object receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, Object location) {
+                                     String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, Object location) {
         try {
             String sql = "INSERT INTO socialmediaentries (`projectId`,\n" +
                     "`senderUserId`,\n" +
@@ -413,9 +456,13 @@ public class DatabaseHelperMethods {
             preparedStatement.setString(4, context);
             preparedStatement.setString(5, channelType.name());
             preparedStatement.setString(6, inResponseTo);
-            preparedStatement.setString(7, null);
+            preparedStatement.setString(7, receiver);
             preparedStatement.setString(8, subject);
             preparedStatement.setString(9, sentDate);
+            preparedStatement.setString(10, null);
+            preparedStatement.setString(11, null);
+            preparedStatement.setString(12, null);
+            preparedStatement.setString(13, null);
 
             preparedStatement.executeUpdate();
             preparedStatement.close();
