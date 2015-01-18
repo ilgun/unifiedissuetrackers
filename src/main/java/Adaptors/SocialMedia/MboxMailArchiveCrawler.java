@@ -88,7 +88,7 @@ public class MboxMailArchiveCrawler {
             emailsInMbox = IOUtils.toString(is, "UTF-8");
         } catch (IOException e) {
             if (i >= limit) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
             doForeachMboxFile(i++, limit, parser, mboxLink);
         }
