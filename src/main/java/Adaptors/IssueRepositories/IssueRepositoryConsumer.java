@@ -16,11 +16,11 @@ public interface IssueRepositoryConsumer<T, Y> {
 
     int getPriorityId(T t, int issueRepositoryId) throws IOException;
 
-    void saveHistory(T history, int databaseIssueId);
-
     void saveIssueLinks(int databaseIssueId, List<IssueLink> issueLinks);
 
     void saveComments(List<Comment> comments, int databaseIssueId);
+
+    void saveHistory(String originalIssueId, int databaseIssueId) throws IOException;
 
     void saveCustomFields(List<CustomField> customFields, int issueId);
 

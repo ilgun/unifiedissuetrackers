@@ -181,7 +181,7 @@ public class BugzillaAdapterMain {
                 String field = tds.get(2).text();
                 String from = tds.get(3).text();
                 String to = tds.get(4).text();
-                userId = helperMethods.createOrGetRepositoryUser(username, username, issueRepositoryId);
+                userId = helperMethods.getOrCreateRepositoryUser(username, username, issueRepositoryId);
                 helperMethods.saveHistory(databaseIssueId, from, to, field, userId, date);
             } // User is same however, there is new activity.
             else {
@@ -210,7 +210,7 @@ public class BugzillaAdapterMain {
         if (isEmpty(assigneeEmail)) {
             assigneeEmail = assigneeName;
         }
-        return helperMethods.createOrGetRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
+        return helperMethods.getOrCreateRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
     }
 
     public int getAssigneeId(User assignee) {
@@ -225,7 +225,7 @@ public class BugzillaAdapterMain {
         if (isEmpty(assigneeEmail)) {
             assigneeEmail = assigneeName;
         }
-        return helperMethods.createOrGetRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
+        return helperMethods.getOrCreateRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
     }
 
     public int saveIssue(String issueId, String issueType, String summary, int reporterUserId, String createdDate, String description, int priorityId, String status, String projectName,
@@ -395,7 +395,7 @@ public class BugzillaAdapterMain {
                 date = history.get("when").asText();
             }
 
-            int userId = helperMethods.createOrGetRepositoryUser(author, author, issueRepositoryId);
+            int userId = helperMethods.getOrCreateRepositoryUser(author, author, issueRepositoryId);
             JsonNode changes = history.get("changes");
             for (JsonNode anItem : changes) {
                 String field = anItem.get("field_name").asText();

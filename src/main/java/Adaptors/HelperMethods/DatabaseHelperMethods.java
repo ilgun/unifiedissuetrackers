@@ -103,7 +103,7 @@ public class DatabaseHelperMethods {
         return projectId;
     }
 
-    public int createOrGetRepositoryUser(String authorName, String authorEmail, int issueRepositoryId) {
+    public int getOrCreateRepositoryUser(String authorName, String authorEmail, int issueRepositoryId) {
         int output = 0;
 
         Map<String, TableColumnName> authorNameMap = newHashMap();
@@ -117,7 +117,7 @@ public class DatabaseHelperMethods {
 
         try {
             int userId = getOrCreateUser(authorName);
-            int userNameTableId = createUserName(userId, authorEmail);
+            int userNameTableId = getOrCreateUserName(userId, authorEmail);
             String sql = "INSERT INTO issuerepositoryuser (`userId`,\n" +
                     "`issueRepositoryId`,\n" +
                     "`username`)" +
@@ -141,7 +141,7 @@ public class DatabaseHelperMethods {
         return output;
     }
 
-    private int createUserName(int userId, String authorEmail) {
+    private int getOrCreateUserName(int userId, String authorEmail) {
         int userNameId = 0;
 
         Map<String, TableColumnName> authorEmailMap = newHashMap();
@@ -351,7 +351,7 @@ public class DatabaseHelperMethods {
     }
 
     public void saveComment(int issueRepositoryId, int databaseIssueId, String authorName, String authorEmail, String content) {
-        int userId = createOrGetRepositoryUser(authorName, authorEmail, issueRepositoryId);
+        int userId = getOrCreateRepositoryUser(authorName, authorEmail, issueRepositoryId);
         try {
             String sql = "INSERT INTO comments (`issueId`,\n" +
                     "`userId`,\n" +

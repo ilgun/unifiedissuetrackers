@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static java.lang.Thread.sleep;
 import static java.nio.charset.Charset.forName;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.log4j.Logger.getLogger;
@@ -74,7 +75,7 @@ public class GzippedMailArchiveCrawler {
         LOGGER.info("Total Email Files: " + urls.size());
 
         for (String url : urls) {
-            String emails = doForEachFile(0, 5, url);
+            String emails = doForEachFile(0, 20, url);
             if (emails == null) continue;
             parser.parseAndSaveEmails(emails);
             logCount();
@@ -82,7 +83,7 @@ public class GzippedMailArchiveCrawler {
         LOGGER.info("Process Finished");
     }
 
-    private String doForEachFile(int i, int limit, String url) throws IOException {
+    private String doForEachFile(int i, int limit, String url) throws IOException, InterruptedException {
         String fileUrl = baseUrl + url;
         String emails = null;
 
@@ -93,6 +94,7 @@ public class GzippedMailArchiveCrawler {
                 e.printStackTrace();
                 return emails;
             } else {
+                sleep(1000);
                 doForEachFile(++i, limit, url);
             }
         }

@@ -64,9 +64,9 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         JiraAdapterMain main = new JiraAdapterMain(
                 new Client(),
                 new IssueTrackerConnector().getConnection(),
-                "HIVE",
-                "https://hive.apache.org",
-                "https://issues.apache.org/jira/browse/HIVE",
+                "JENKINS",
+                "http://jenkins-ci.org/",
+                "https://issues.jenkins-ci.org/browse",
                 "JIRA");
 
         main.run();
@@ -77,7 +77,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         int maxNumber = 1;
 
         while (startPoint < maxNumber) {
-            WebResource resource = client.resource("https://issues.apache.org/jira/rest/api/latest/search?jql=project=HIVE&startAt=" + startPoint +
+            WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/search?jql=&startAt=" + startPoint +
                     "&maxResults=100&expand=names,changelog");
             ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
             String output = response.getEntity(String.class);
@@ -100,7 +100,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     }
 
     private void saveIssue(JsonNode root, JsonNode names) throws IOException {
-        String issueId = root.get("id").asText();
+        String originalIssueId = root.get("id").asText();
         JsonNode fields = root.get("fields");
         String issueType = fields.get("issuetype").get("name").asText();
         String summary = fields.get("summary").asText();
@@ -120,16 +120,16 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         int assigneeUserId = getAssigneeId(fields);
         int priorityId = getPriorityId(fields, issueRepositoryId);
 
-        int databaseIssueId = saveIssue(root, issueId, summary, issueType, reporterUserId, createdDate, description, priorityId, status,
+        int databaseIssueId = saveIssue(root, originalIssueId, summary, issueType, reporterUserId, createdDate, description, priorityId, status,
                 projectName, componentNames, dueDate, assigneeUserId, currentEstimate, issueAddress, release, resolutionStatus, originalEstimate);
         if (databaseIssueId == 0) return;
 
-        saveHistory(root, databaseIssueId);
+        saveHistory(originalIssueId, databaseIssueId);
 
-        List<Comment> comments = getComments(issueId);
+        List<Comment> comments = getComments(originalIssueId);
         saveComments(comments, databaseIssueId);
 
-        List<CustomField> customFields = getCustomFields(issueId, fields, names);
+        List<CustomField> customFields = getCustomFields(originalIssueId, fields, names);
         saveCustomFields(customFields, databaseIssueId);
 
         List<IssueLink> issueLinks = getIssueLinks(fields);
@@ -156,8 +156,14 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     }
 
     @Override
-    public void saveHistory(JsonNode root, int databaseIssueId) {
+    public void saveHistory(String originalIssueId, int databaseIssueId) throws IOException {
+        WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/issue/" + originalIssueId + "?expand=changelog");
+        ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
+        String output = response.getEntity(String.class);
+        JsonNode root = new ObjectMapper().readTree(output);
+
         JsonNode histories = root.get("changelog").get("histories");
+
         if (histories.isNull()) return;
         for (JsonNode history : histories) {
             if (history.isNull() || history.get("author") == null || history.get("author").isNull()) {
@@ -166,15 +172,20 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             JsonNode authorNode = history.get("author");
             String authorName = null;
             String authorEmail = null;
-            if (!authorNode.get("name").isNull() && !authorNode.get("emailAddress").isNull()) {
+            if (authorNode != null &&
+                    authorNode.get("name") != null &&
+                    authorNode.get("emailAddress") != null) {
                 authorName = authorNode.get("name").asText();
                 authorEmail = authorNode.get("emailAddress").asText();
+            } else if (authorNode.get("emailAddress") == null) {
+                authorName = authorNode.get("name").asText();
+                authorEmail = authorName;
             }
             String date = null;
-            if (!history.get("created").isNull()) {
+            if (history.get("created") != null) {
                 date = history.get("created").asText();
             }
-            int userId = helperMethods.createOrGetRepositoryUser(authorName, authorEmail, issueRepositoryId);
+            int userId = helperMethods.getOrCreateRepositoryUser(authorName, authorEmail, issueRepositoryId);
             JsonNode itemsNode = history.get("items");
             for (JsonNode anItem : itemsNode) {
                 String field = anItem.get("field").asText();
@@ -208,7 +219,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     }
 
     public String getPriorityDescription(String priorityId) throws IOException {
-        WebResource resource = client.resource("https://issues.apache.org/jira/rest/api/latest/priority/" + priorityId);
+        WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/priority/" + priorityId);
         ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
         String jsonString = response.getEntity(String.class);
         JsonNode root = new ObjectMapper().readTree(jsonString);
@@ -219,7 +230,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     private String getRelease(JsonNode fields) {
         JsonNode fixVersionsNode = fields.get("fixVersions");
         String release;
-        if (!fixVersionsNode.isNull() && fixVersionsNode.get(0) != null) {
+        if (fixVersionsNode != null && !fixVersionsNode.isNull() && fixVersionsNode.get(0) != null) {
             release = fixVersionsNode.get(0).get("name").asText();
         } else {
             release = null;
@@ -232,7 +243,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         JsonNode reporterNode = fields.get("reporter");
         String reporterEmail = reporterNode.get("emailAddress").asText();
         String reporterName = reporterNode.get("name").asText();
-        return helperMethods.createOrGetRepositoryUser(reporterName, reporterEmail, issueRepositoryId);
+        return helperMethods.getOrCreateRepositoryUser(reporterName, reporterEmail, issueRepositoryId);
     }
 
     @Override
@@ -342,7 +353,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     private Hours getOriginalEstimate(JsonNode fields) {
         JsonNode originalEstimateString = fields.get("timeoriginalestimate");
         Seconds originalEstimate;
-        if (!originalEstimateString.isNull()) {
+        if (originalEstimateString != null && !originalEstimateString.isNull()) {
             originalEstimate = Seconds.seconds(originalEstimateString.getIntValue());
             return originalEstimate.toStandardHours();
         }
@@ -352,7 +363,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     private Hours getCurrentEstimate(JsonNode fields) {
         JsonNode aggregateTimeEstimate = fields.get("aggregatetimeestimate");
         Seconds currentEstimate;
-        if (!aggregateTimeEstimate.isNull()) {
+        if (aggregateTimeEstimate != null && !aggregateTimeEstimate.isNull()) {
             currentEstimate = Seconds.seconds(aggregateTimeEstimate.getIntValue());
             return currentEstimate.toStandardHours();
         }
@@ -365,7 +376,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         if (!assignee.isNull() && assignee.get("name") != null) {
             String assigneeName = assignee.get("name").asText();
             String assigneeEmail = assignee.get("emailAddress").asText();
-            return helperMethods.createOrGetRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
+            return helperMethods.getOrCreateRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
         } else {
             return 0;
         }
@@ -374,7 +385,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     private DateTime getDueDate(JsonNode fields) {
         JsonNode dueDateField = fields.get("duedate");
         DateTime dueDate = null;
-        if (!dueDateField.isNull()) {
+        if (dueDateField != null && !dueDateField.isNull()) {
             dueDate = parse(dueDateField.getTextValue());
         }
         return dueDate;
@@ -411,7 +422,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     }
 
     private LinkedList<Comment> getComments(String issueId) throws IOException {
-        WebResource resource = client.resource("https://issues.apache.org/jira/rest/api/latest/issue/" + issueId + "/comment");
+        WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/issue/" + issueId + "/comment");
         ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
         String jsonString = response.getEntity(String.class);
         JsonNode commentsNode = new ObjectMapper().readTree(jsonString);

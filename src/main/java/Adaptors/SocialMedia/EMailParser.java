@@ -84,6 +84,7 @@ public class EmailParser {
 
     private List<String> getReplyTo(AddressList addresses) {
         List<String> replies = newArrayList();
+        if(addresses == null) return replies;
         for (Address address : addresses) {
             replies.add(address.toString());
         }
