@@ -179,7 +179,8 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
                 authorEmail = authorNode.get("emailAddress").asText();
             } else if (authorNode.get("emailAddress") == null) {
                 authorName = authorNode.get("name").asText();
-                authorEmail = authorNode.get("displayName").asText();;
+                authorEmail = authorNode.get("displayName").asText();
+                ;
             }
             String date = null;
             if (history.get("created") != null) {
@@ -212,7 +213,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     @Override
     public int getPriorityId(JsonNode fields, int issueRepositoryId) throws IOException {
         JsonNode priority = fields.get("priority");
-        if(priority == null || priority.isNull()){
+        if (priority == null || priority.isNull()) {
             return helperMethods.createOrGetPriorityId("NULL", "Priority field was null", issueRepositoryId);
         }
         String id = priority.get("id").asText();
@@ -244,13 +245,16 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     @Override
     public int getReporterId(JsonNode fields) {
         JsonNode reporterNode = fields.get("reporter");
+        if(reporterNode == null || reporterNode.isNull()) return 0;
+        String reporterName = reporterNode.get("name").asText();
         String reporterEmail;
         if (reporterNode.get("emailAddress") != null) {
             reporterEmail = reporterNode.get("emailAddress").asText();
-        } else {
+        } else if (reporterNode.get("displayName") != null) {
             reporterEmail = reporterNode.get("displayName").asText();
+        } else {
+            reporterEmail = reporterName;
         }
-        String reporterName = reporterNode.get("name").asText();
         return helperMethods.getOrCreateRepositoryUser(reporterName, reporterEmail, issueRepositoryId);
     }
 
