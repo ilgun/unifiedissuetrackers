@@ -64,9 +64,9 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         JiraAdapterMain main = new JiraAdapterMain(
                 new Client(),
                 new IssueTrackerConnector().getConnection(),
-                "JENKINS",
-                "http://jenkins-ci.org/",
-                "https://issues.jenkins-ci.org/browse",
+                "HIBERNATE",
+                "http://hibernate.org",
+                "https://hibernate.atlassian.net",
                 "JIRA");
 
         main.run();
@@ -77,7 +77,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         int maxNumber = 1;
 
         while (startPoint < maxNumber) {
-            WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/search?jql=&startAt=" + startPoint +
+            WebResource resource = client.resource(repositoryUrl + "/rest/api/latest/search?jql=&startAt=" + startPoint +
                     "&maxResults=100&expand=names,changelog");
             ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
             String output = response.getEntity(String.class);
@@ -157,7 +157,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
 
     @Override
     public void saveHistory(String originalIssueId, int databaseIssueId) throws IOException {
-        WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/issue/" + originalIssueId + "?expand=changelog");
+        WebResource resource = client.resource(repositoryUrl + "/rest/api/latest/issue/" + originalIssueId + "?expand=changelog");
         ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
         String output = response.getEntity(String.class);
         JsonNode root = new ObjectMapper().readTree(output);
@@ -179,7 +179,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
                 authorEmail = authorNode.get("emailAddress").asText();
             } else if (authorNode.get("emailAddress") == null) {
                 authorName = authorNode.get("name").asText();
-                authorEmail = authorName;
+                authorEmail = authorNode.get("displayName").asText();;
             }
             String date = null;
             if (history.get("created") != null) {
@@ -212,6 +212,9 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     @Override
     public int getPriorityId(JsonNode fields, int issueRepositoryId) throws IOException {
         JsonNode priority = fields.get("priority");
+        if(priority == null || priority.isNull()){
+            return helperMethods.createOrGetPriorityId("NULL", "Priority field was null", issueRepositoryId);
+        }
         String id = priority.get("id").asText();
         String priorityName = priority.get("name").asText();
         String description = getPriorityDescription(id);
@@ -219,7 +222,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     }
 
     public String getPriorityDescription(String priorityId) throws IOException {
-        WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/priority/" + priorityId);
+        WebResource resource = client.resource(repositoryUrl + "/rest/api/latest/priority/" + priorityId);
         ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
         String jsonString = response.getEntity(String.class);
         JsonNode root = new ObjectMapper().readTree(jsonString);
@@ -241,7 +244,12 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     @Override
     public int getReporterId(JsonNode fields) {
         JsonNode reporterNode = fields.get("reporter");
-        String reporterEmail = reporterNode.get("emailAddress").asText();
+        String reporterEmail;
+        if (reporterNode.get("emailAddress") != null) {
+            reporterEmail = reporterNode.get("emailAddress").asText();
+        } else {
+            reporterEmail = reporterNode.get("displayName").asText();
+        }
         String reporterName = reporterNode.get("name").asText();
         return helperMethods.getOrCreateRepositoryUser(reporterName, reporterEmail, issueRepositoryId);
     }
@@ -375,7 +383,12 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         JsonNode assignee = fields.get("assignee");
         if (!assignee.isNull() && assignee.get("name") != null) {
             String assigneeName = assignee.get("name").asText();
-            String assigneeEmail = assignee.get("emailAddress").asText();
+            String assigneeEmail;
+            if (assignee.get("emailAddress") != null) {
+                assigneeEmail = assignee.get("emailAddress").asText();
+            } else {
+                assigneeEmail = assignee.get("displayName").asText();
+            }
             return helperMethods.getOrCreateRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
         } else {
             return 0;
@@ -422,7 +435,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     }
 
     private LinkedList<Comment> getComments(String issueId) throws IOException {
-        WebResource resource = client.resource("https://issues.jenkins-ci.org/rest/api/latest/issue/" + issueId + "/comment");
+        WebResource resource = client.resource(repositoryUrl + "/rest/api/latest/issue/" + issueId + "/comment");
         ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
         String jsonString = response.getEntity(String.class);
         JsonNode commentsNode = new ObjectMapper().readTree(jsonString);
@@ -430,8 +443,14 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         if (!commentsNode.get("comments").isNull()) {
             JsonNode comments = commentsNode.get("comments");
             for (int i = 0; i < comments.size(); i++) {
-                String authorName = comments.get(i).get("author").get("name").asText();
-                String authorEmail = comments.get(i).get("author").get("emailAddress").asText();
+                JsonNode authorNode = comments.get(i).get("author");
+                String authorName = authorNode.get("name").asText();
+                String authorEmail;
+                if (authorNode.get("emailAddress") != null) {
+                    authorEmail = authorNode.get("emailAddress").asText();
+                } else {
+                    authorEmail = authorNode.get("displayName").asText();
+                }
                 String body = comments.get(i).get("body").asText();
                 Comment aComment = aComment()
                         .withAuthorEmail(authorEmail)
