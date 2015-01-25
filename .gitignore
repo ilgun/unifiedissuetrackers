@@ -1,3 +1,5 @@
 *.iml
 .idea
 target
+
+configuration/dev/application.properties
