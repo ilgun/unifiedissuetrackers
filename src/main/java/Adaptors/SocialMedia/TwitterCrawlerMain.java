@@ -11,7 +11,7 @@ import java.io.IOException;
 public class TwitterCrawlerMain {
     public static void main(String[] args) throws ConfigurationException, IOException {
 
-        PropertiesConfiguration configuration = new PropertiesConfiguration("configuration/dev/application.properties");
+        PropertiesConfiguration configuration = new PropertiesConfiguration("configuration/dev/twitter.properties");
         String consumerKey = configuration.getString("consumer.key");
         String consumerSecret = configuration.getString("consumer.secret");
         String accessToken = configuration.getString("access.token");
