@@ -64,9 +64,9 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         JiraAdapterMain main = new JiraAdapterMain(
                 new Client(),
                 new IssueTrackerConnector().getConnection(),
-                "HIBERNATE",
-                "http://hibernate.org",
-                "https://hibernate.atlassian.net",
+                "HIVE",
+                "https://hive.apache.org",
+                "https://issues.apache.org/jira",
                 "JIRA");
 
         main.run();
@@ -77,7 +77,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         int maxNumber = 1;
 
         while (startPoint < maxNumber) {
-            WebResource resource = client.resource(repositoryUrl + "/rest/api/latest/search?jql=&startAt=" + startPoint +
+            WebResource resource = client.resource(repositoryUrl + "/rest/api/latest/search?jql=project=hive&startAt=" + startPoint +
                     "&maxResults=100&expand=names,changelog");
             ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
             String output = response.getEntity(String.class);
@@ -245,7 +245,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     @Override
     public int getReporterId(JsonNode fields) {
         JsonNode reporterNode = fields.get("reporter");
-        if(reporterNode == null || reporterNode.isNull()) return 0;
+        if(reporterNode == null || reporterNode.isNull()) return helperMethods.getOrCreateRepositoryUser("UserNotFound!?!", "UserNotFound!?!", issueRepositoryId);
         String reporterName = reporterNode.get("name").asText();
         String reporterEmail;
         if (reporterNode.get("emailAddress") != null) {
