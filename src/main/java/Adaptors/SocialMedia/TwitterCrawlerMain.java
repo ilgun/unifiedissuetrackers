@@ -1,5 +1,7 @@
 package Adaptors.SocialMedia;
 
+import Adaptors.HelperMethods.DatabaseHelperMethods;
+import DatabaseConnectors.IssueTrackerConnector;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import twitter4j.Twitter;
@@ -25,11 +27,12 @@ public class TwitterCrawlerMain {
                 .setOAuthAccessToken(accessToken)
                 .setOAuthAccessTokenSecret(accessSecret);
 
-
         TwitterFactory tf = new TwitterFactory(cb.build());
         Twitter twitterInstance = tf.getInstance();
 
-        TwitterCrawler crawler = new TwitterCrawler(twitterInstance, "hibernate");
+        DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(new IssueTrackerConnector().getConnection());
+        TwitterCrawler crawler = new TwitterCrawler(twitterInstance, "#Hive", helperMethods, "HIVE", "https://hive.apache.org");
+
         crawler.runCrawler();
     }
 }

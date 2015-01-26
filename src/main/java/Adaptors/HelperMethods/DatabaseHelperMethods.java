@@ -432,7 +432,7 @@ public class DatabaseHelperMethods {
     }
 
     public void saveSocialMediaEntry(int projectId, int senderUserId, String originalEntryId, String context, SocialMediaChannel channelType, String inResponseTo,
-                                     String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, Object location) {
+                                     String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, String location) {
         try {
             String sql = "INSERT INTO socialmediaentries (`projectId`,\n" +
                     "`senderUserId`,\n" +
@@ -462,7 +462,7 @@ public class DatabaseHelperMethods {
             preparedStatement.setString(10, null);
             preparedStatement.setString(11, null);
             preparedStatement.setString(12, null);
-            preparedStatement.setString(13, null);
+            preparedStatement.setString(13, location);
 
             preparedStatement.executeUpdate();
             preparedStatement.close();
