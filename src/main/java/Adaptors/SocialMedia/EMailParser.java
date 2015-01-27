@@ -1,15 +1,16 @@
 package Adaptors.SocialMedia;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
-import Model.SocialMedia.SocialMediaChannel;
 import org.apache.commons.io.IOUtils;
 import org.apache.james.mime4j.dom.BinaryBody;
+import org.apache.james.mime4j.dom.Header;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.TextBody;
 import org.apache.james.mime4j.dom.address.Address;
 import org.apache.james.mime4j.dom.address.AddressList;
 import org.apache.james.mime4j.dom.address.Mailbox;
 import org.apache.james.mime4j.dom.address.MailboxList;
+import org.apache.james.mime4j.field.LenientFieldParser;
 import org.apache.james.mime4j.message.BasicBodyFactory;
 import org.apache.james.mime4j.message.BodyFactory;
 import org.apache.james.mime4j.message.DefaultBodyDescriptorBuilder;
@@ -21,9 +22,13 @@ import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import static Model.SocialMedia.SocialMediaChannel.EMAIL;
 import static com.google.common.base.Splitter.on;
 import static com.google.common.collect.Lists.newArrayList;
+import static java.util.stream.Collectors.toList;
 import static org.apache.commons.io.IOUtils.toInputStream;
 import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
@@ -50,29 +55,77 @@ public class EmailParser {
 
         for (String anEmail : emails) {
             Message message = messageBuilder.parseMessage(toInputStream(anEmail, "UTF-8"));
-            if (message.getFrom() != null) {
-                List<String> to = getTo(message.getTo());
-                List<String> fromName = getFrom(message.getFrom());
-                List<String> fromEmail = fromEmail(message.getFrom());
+            if (!isEmpty(anEmail)) {
+                if (message.getFrom() != null) {
+                    List<String> to = getTo(message.getTo());
+                    List<String> fromName = getFrom(message.getFrom());
+                    List<String> fromEmail = fromEmail(message.getFrom());
 
-                String messageId = message.getMessageId();
-                String sentDate = message.getDate().toString();
-                List<String> replyTo = getReplyTo(message.getReplyTo());
-                String subject = message.getSubject();
+                    String messageId = message.getMessageId();
+                    String sentDate = message.getDate().toString();
+                    List<String> replyTo = getReplyTo(message.getReplyTo());
+                    String subject = message.getSubject();
+                    String context = getBody(message);
 
-                String context;
-                try {
-                    TextBody reader = (TextBody) message.getBody();
-                    context = IOUtils.toString(reader.getReader());
-                } catch (ClassCastException e) {
-                    BinaryBody body = (BinaryBody) message.getBody();
-                    context = IOUtils.toString(body.getInputStream());
+                    int userId = helperMethods.getOrCreateSocialMediaUser(projectId, join(fromName, ","), join(fromEmail, ","));
+                    helperMethods.saveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
+                    logCount();
+                } else if (message.getHeader().getField("from") != null) {
+                    Header header = message.getHeader();
+                    String from = header.getField("from").getBody();
+
+                    String fromName = extractNameFrom(from);
+                    String fromEmail = extractEmailFrom(from);
+                    int userId = helperMethods.getOrCreateSocialMediaUser(projectId, fromName, fromEmail);
+                    String messageId = header.getField("message-id").getBody();
+                    String context = getBody(message);
+                    String replyTo = getReplyTo(header);
+                    String to = getReferences(header);
+                    String subject = header.getField("subject").getBody();
+                    String sentDate = header.getField("date").getBody();
+
+                    helperMethods.saveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, replyTo, to, subject, sentDate, null, null, null, null);
+                    logCount();
                 }
-                int userId = helperMethods.getOrCreateSocialMediaUser(projectId, join(fromName, ","), join(fromEmail, ","));
-                helperMethods.saveSocialMediaEntry(projectId, userId, messageId, context, SocialMediaChannel.EMAIL, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
-                logCount();
             }
         }
+    }
+
+    private String getReferences(Header header) {
+        if (header.getField("references") != null) {
+            return header.getField("references").getBody();
+        }
+        return "";
+    }
+
+    private String getReplyTo(Header header) {
+        if (header.getField("in-reply-to") != null) {
+            return header.getField("in-reply-to").getBody();
+        }
+        return null;
+    }
+
+    private String getBody(Message message) throws IOException {
+        String context;
+        try {
+            TextBody reader = (TextBody) message.getBody();
+            context = IOUtils.toString(reader.getReader());
+        } catch (Exception e) {
+            BinaryBody body = (BinaryBody) message.getBody();
+            context = IOUtils.toString(body.getInputStream());
+        }
+        return context;
+    }
+
+    private String extractEmailFrom(String input) {
+        return input.substring(0, input.indexOf("("));
+    }
+
+    private String extractNameFrom(String input) {
+        Pattern pattern = Pattern.compile("\\((.*?)\\)");
+        Matcher match = pattern.matcher(input);
+        match.find();
+        return match.group(1);
     }
 
     private void logCount() {
@@ -84,18 +137,14 @@ public class EmailParser {
 
     private List<String> getReplyTo(AddressList addresses) {
         List<String> replies = newArrayList();
-        if(addresses == null) return replies;
-        for (Address address : addresses) {
-            replies.add(address.toString());
-        }
+        if (addresses == null) return replies;
+        replies.addAll(addresses.stream().map(Address::toString).collect(toList()));
         return replies;
     }
 
     private List<String> fromEmail(MailboxList mailboxList) {
         List<String> emails = newArrayList();
-        for (Mailbox mailbox : mailboxList) {
-            emails.add(mailbox.getAddress());
-        }
+        emails.addAll(mailboxList.stream().map(Mailbox::getAddress).collect(toList()));
         return emails;
     }
 
@@ -118,27 +167,26 @@ public class EmailParser {
 
     private List<String> getTo(AddressList addressList) {
         List<String> to = newArrayList();
-        if(addressList == null) return to;
-        for (Address address : addressList) {
-            to.add(address.toString());
-        }
+        if (addressList == null) return to;
+        to.addAll(addressList.stream().map(Address::toString).collect(toList()));
         return to;
     }
 
     private DefaultMessageBuilder getMessageBuilder() {
-        DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
         BodyFactory bodyFactory = new BasicBodyFactory();
         BodyDescriptorBuilder bodyBuilder = new DefaultBodyDescriptorBuilder();
+
+        DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
         messageBuilder.setBodyFactory(bodyFactory);
         messageBuilder.setBodyDescriptorBuilder(bodyBuilder);
-        messageBuilder.setContentDecoding(true);
-        messageBuilder.setFlatMode(true);
+        messageBuilder.setFieldParser(new LenientFieldParser());
 
         MimeConfig mimeConfig = new MimeConfig();
         mimeConfig.setMaxLineLen(-1);
         mimeConfig.setMaxHeaderLen(-1);
         mimeConfig.setMaxHeaderCount(-1);
         messageBuilder.setMimeEntityConfig(mimeConfig);
+
         return messageBuilder;
     }
 }
