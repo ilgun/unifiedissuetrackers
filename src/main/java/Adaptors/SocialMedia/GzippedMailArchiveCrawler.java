@@ -111,24 +111,16 @@ public class GzippedMailArchiveCrawler {
         String fileUrl = baseUrl + url;
         String emails = null;
         try {
-            HttpClient client = create().build();
-            HttpGet request = new HttpGet(fileUrl);
-            request.addHeader("User-Agent", "USER_AGENT");
-            HttpResponse response = client.execute(request);
-            InputStream is = response.getEntity().getContent();
+            InputStream is = getInputStreamForUrl(fileUrl);
 
             if (fileUrl.contains("gz")) {
                 is = new GZIPInputStream(is);
             }
 
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(is));
-            StringWriter writer = new StringWriter();
 
-            char[] buffer = new char[10240];
-            for (int length; (length = bufferedReader.read(buffer)) > 0; ) {
-                writer.write(buffer, 0, length);
-            }
-            emails = writer.toString();
+            emails = readFileToString(bufferedReader);
+
             closeQuietly(bufferedReader);
             closeQuietly(is);
         } catch (IOException e) {
@@ -141,6 +133,24 @@ public class GzippedMailArchiveCrawler {
             }
         }
         return emails;
+    }
+
+    private String readFileToString(BufferedReader bufferedReader) throws IOException {
+        StringWriter writer = new StringWriter();
+
+        char[] buffer = new char[10240];
+        for (int length; (length = bufferedReader.read(buffer)) > 0; ) {
+            writer.write(buffer, 0, length);
+        }
+        return writer.toString();
+    }
+
+    private InputStream getInputStreamForUrl(String fileUrl) throws IOException {
+        HttpClient client = create().build();
+        HttpGet request = new HttpGet(fileUrl);
+        request.addHeader("User-Agent", "USER_AGENT");
+        HttpResponse response = client.execute(request);
+        return response.getEntity().getContent();
     }
 
     private void logCount() {
