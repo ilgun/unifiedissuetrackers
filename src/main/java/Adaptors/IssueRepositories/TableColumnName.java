@@ -15,5 +15,5 @@ public enum TableColumnName {
     value,
     userId,
     accountName,
-    userName, userEmail, projectId, customFieldId
+    userName, userEmail, projectId, originalEntryId, subject, customFieldId
 }

@@ -5,14 +5,15 @@ import DatabaseConnectors.IssueTrackerConnector;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.log4j.Logger;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.*;
-import java.net.URL;
 import java.sql.Connection;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,17 +21,16 @@ import java.util.zip.GZIPInputStream;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.Thread.sleep;
-import static java.util.zip.GZIPInputStream.GZIP_MAGIC;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.commons.io.IOUtils.closeQuietly;
-import static org.apache.commons.io.IOUtils.toByteArray;
+import static org.apache.http.impl.client.HttpClientBuilder.create;
 import static org.apache.log4j.Logger.getLogger;
 import static org.jsoup.Jsoup.parse;
 
 public class GzippedMailArchiveCrawler {
     private static final Logger LOGGER = getLogger(GzippedMailArchiveCrawler.class);
     private static final String CHARSET = "UTF-8";
-    private final AtomicInteger emailFilesCount = new AtomicInteger();
+    private final AtomicInteger emailFilesCount = new AtomicInteger(1);
     private final String baseUrl;
     private final Connection connection;
     private final Client client;
@@ -56,9 +56,20 @@ public class GzippedMailArchiveCrawler {
         crawler.run();
     }
 
-    private static boolean isGzipStream(byte[] bytes) {
-        int head = ((int) bytes[0] & 0xff) | ((bytes[1] << 8) & 0xff00);
-        return GZIP_MAGIC == head;
+    private boolean isGZipped(InputStream in) {
+        if (!in.markSupported()) {
+            in = new BufferedInputStream(in);
+        }
+        in.mark(2);
+        int magic = 0;
+        try {
+            magic = in.read() & 0xff | ((in.read() << 8) & 0xff00);
+            in.reset();
+        } catch (IOException e) {
+            e.printStackTrace(System.err);
+            return false;
+        }
+        return magic == GZIPInputStream.GZIP_MAGIC;
     }
 
     public void run() throws InterruptedException {
@@ -99,27 +110,27 @@ public class GzippedMailArchiveCrawler {
     private String doForEachFile(int i, int limit, String url) throws InterruptedException {
         String fileUrl = baseUrl + url;
         String emails = null;
-        Reader reader = null;
-        StringWriter writer = null;
+        try {
+            HttpClient client = create().build();
+            HttpGet request = new HttpGet(fileUrl);
+            request.addHeader("User-Agent", "USER_AGENT");
+            HttpResponse response = client.execute(request);
+            InputStream is = response.getEntity().getContent();
 
-        try (InputStream is = new URL(fileUrl).openStream()) {
-            byte[] responseBytes = toByteArray(is);
-            if (isGzipStream(responseBytes)) {
-                ByteArrayInputStream bais = new ByteArrayInputStream(responseBytes);
-                GZIPInputStream decompressedStream = new GZIPInputStream(bais);
-                reader = new InputStreamReader(decompressedStream, CHARSET);
-                writer = new StringWriter();
-
-                char[] buffer = new char[10240];
-                for (int length; (length = reader.read(buffer)) > 0; ) {
-                    writer.write(buffer, 0, length);
-                }
-                emails = writer.toString();
-                closeQuietly(bais);
-                closeQuietly(decompressedStream);
-            } else {
-                emails = IOUtils.toString(is, CHARSET);
+            if (fileUrl.contains("gz")) {
+                is = new GZIPInputStream(is);
             }
+
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(is));
+            StringWriter writer = new StringWriter();
+
+            char[] buffer = new char[10240];
+            for (int length; (length = bufferedReader.read(buffer)) > 0; ) {
+                writer.write(buffer, 0, length);
+            }
+            emails = writer.toString();
+            closeQuietly(bufferedReader);
+            closeQuietly(is);
         } catch (IOException e) {
             if (i >= limit) {
                 e.printStackTrace();
@@ -128,9 +139,6 @@ public class GzippedMailArchiveCrawler {
                 sleep(1000);
                 doForEachFile(++i, limit, url);
             }
-        } finally {
-            closeQuietly(reader);
-            closeQuietly(writer);
         }
         return emails;
     }

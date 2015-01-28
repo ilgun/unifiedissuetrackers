@@ -68,7 +68,7 @@ public class EmailParser {
                     String context = getBody(message);
 
                     int userId = helperMethods.getOrCreateSocialMediaUser(projectId, join(fromName, ","), join(fromEmail, ","));
-                    helperMethods.saveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
+                    helperMethods.getOrSaveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
                     logCount();
                 } else if (message.getHeader().getField("from") != null) {
                     Header header = message.getHeader();
@@ -84,7 +84,7 @@ public class EmailParser {
                     String subject = header.getField("subject").getBody();
                     String sentDate = header.getField("date").getBody();
 
-                    helperMethods.saveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, replyTo, to, subject, sentDate, null, null, null, null);
+                    helperMethods.getOrSaveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, replyTo, to, subject, sentDate, null, null, null, null);
                     logCount();
                 }
             }

@@ -431,8 +431,17 @@ public class DatabaseHelperMethods {
         return userId;
     }
 
-    public void saveSocialMediaEntry(int projectId, int senderUserId, String originalEntryId, String context, SocialMediaChannel channelType, String inResponseTo,
-                                     String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, String location) {
+    public void getOrSaveSocialMediaEntry(int projectId, int senderUserId, String originalEntryId, String context, SocialMediaChannel channelType, String inResponseTo,
+                                          String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, String location) {
+        Map<Integer, TableColumnName> projectIdMap = newHashMap();
+        projectIdMap.put(projectId, TableColumnName.projectId);
+
+        Map<String, TableColumnName> stringMap = newHashMap();
+        stringMap.put(originalEntryId, TableColumnName.originalEntryId);
+        stringMap.put(subject, TableColumnName.subject);
+
+        int entryId = checkIfExits("socialmediaentries", stringMap, projectIdMap);
+        if (entryId != 0) return;
         try {
             String sql = "INSERT INTO socialmediaentries (`projectId`,\n" +
                     "`senderUserId`,\n" +

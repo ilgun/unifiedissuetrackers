@@ -53,7 +53,7 @@ public class TwitterCrawler {
                     String subject = join(getHashtags(tweet), ",");
                     String location = getLocation(tweet);
 
-                    helperMethods.saveSocialMediaEntry(projectId, senderUserId, originalEntryId, text, TWITTER,
+                    helperMethods.getOrSaveSocialMediaEntry(projectId, senderUserId, originalEntryId, text, TWITTER,
                             inResponseTo, null, subject, null, null, null, null, location);
                     logCount();
                 }
