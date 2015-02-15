@@ -1,14 +1,15 @@
 package Adaptors.SocialMedia;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
+import Model.SocialMedia.SocialMediaChannel;
 import org.apache.log4j.Logger;
 import twitter4j.*;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static Model.SocialMedia.SocialMediaChannel.TWITTER;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.System.exit;
 import static java.lang.Thread.sleep;
@@ -24,18 +25,23 @@ public class TwitterCrawler {
     private final String queryToSearch;
     private final String projectName;
     private final String projectUrl;
+    private final String repositoryUrl;
+    private final SocialMediaChannel channelType;
 
-    public TwitterCrawler(Twitter twitterClient, String queryToSearch, DatabaseHelperMethods helperMethods, String projectName, String projectUrl) {
+    public TwitterCrawler(Twitter twitterClient, String queryToSearch, DatabaseHelperMethods helperMethods, String projectName, String projectUrl, String repositoryUrl, SocialMediaChannel channelType) {
         this.twitterClient = twitterClient;
         this.queryToSearch = queryToSearch;
         this.helperMethods = helperMethods;
         this.projectName = projectName;
         this.projectUrl = projectUrl;
+        this.repositoryUrl = repositoryUrl;
+        this.channelType = channelType;
     }
 
 
     public void runCrawler() {
         int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
+        int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId, repositoryUrl, channelType);
         Query query = new Query(queryToSearch);
         query.count(100);
         try {
@@ -45,16 +51,17 @@ public class TwitterCrawler {
                 List<Status> tweets = result.getTweets();
                 for (Status tweet : tweets) {
                     User user = tweet.getUser();
-                    int senderUserId = helperMethods.getOrCreateSocialMediaUser(projectId, user.getName(), user.getURL());
+                    int senderUserId = helperMethods.getOrCreateSocialMediaUser(socialMediaRepositoryId, user.getName(), user.getURL());
 
                     String originalEntryId = String.valueOf(tweet.getId());
                     String text = tweet.getText();
                     String inResponseTo = String.valueOf(tweet.getInReplyToStatusId());
                     String subject = join(getHashtags(tweet), ",");
                     String location = getLocation(tweet);
+                    Date createdDate = tweet.getCreatedAt();
 
-                    helperMethods.getOrSaveSocialMediaEntry(projectId, senderUserId, originalEntryId, text, TWITTER,
-                            inResponseTo, null, subject, null, null, null, null, location);
+                    helperMethods.getOrSaveSocialMediaEntry(socialMediaRepositoryId, senderUserId, originalEntryId, text,
+                            inResponseTo, null, subject, createdDate.toString(), null, null, null, location);
                     logCount();
                 }
                 if (result.getRateLimitStatus().getRemaining() < 2) {

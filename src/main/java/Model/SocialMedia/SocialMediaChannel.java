@@ -1,5 +1,5 @@
 package Model.SocialMedia;
 
 public enum SocialMediaChannel {
-    TWITTER, EMAIL
+    TWITTER, IRC, EMAIL
 }

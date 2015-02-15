@@ -10,6 +10,8 @@ import twitter4j.conf.ConfigurationBuilder;
 
 import java.io.IOException;
 
+import static Model.SocialMedia.SocialMediaChannel.TWITTER;
+
 public class TwitterCrawlerMain {
     public static void main(String[] args) throws ConfigurationException, IOException {
 
@@ -30,8 +32,8 @@ public class TwitterCrawlerMain {
         TwitterFactory tf = new TwitterFactory(cb.build());
         Twitter twitterInstance = tf.getInstance();
 
-        DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(new IssueTrackerConnector().getConnection());
-        TwitterCrawler crawler = new TwitterCrawler(twitterInstance, "#Hive", helperMethods, "HIVE", "https://hive.apache.org");
+        DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(new IssueTrackerConnector().getDatabaseConnection());
+        TwitterCrawler crawler = new TwitterCrawler(twitterInstance, "#Hive", helperMethods, "HIVE", "https://hive.apache.org", "www.twitter.com", TWITTER);
 
         crawler.runCrawler();
     }

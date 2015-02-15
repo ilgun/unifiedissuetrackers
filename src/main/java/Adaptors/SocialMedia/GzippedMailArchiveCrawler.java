@@ -1,7 +1,7 @@
 package Adaptors.SocialMedia;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
-import DatabaseConnectors.IssueTrackerConnector;
+import Model.SocialMedia.SocialMediaChannel;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -19,6 +19,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
+import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
+import static Model.SocialMedia.SocialMediaChannel.EMAIL;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.Thread.sleep;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
@@ -30,28 +32,32 @@ import static org.jsoup.Jsoup.parse;
 public class GzippedMailArchiveCrawler {
     private static final Logger LOGGER = getLogger(GzippedMailArchiveCrawler.class);
     private static final String CHARSET = "UTF-8";
+
     private final AtomicInteger emailFilesCount = new AtomicInteger(1);
-    private final String baseUrl;
     private final Connection connection;
     private final Client client;
     private final String projectName;
     private final String projectUrl;
+    private final String repositoryUrl;
+    private final SocialMediaChannel channelType;
 
-    public GzippedMailArchiveCrawler(Client client, Connection connection, String projectName, String projectUrl, String baseUrl) {
-        this.baseUrl = baseUrl;
+    public GzippedMailArchiveCrawler(Client client, Connection connection, String projectName, String projectUrl, String repositoryUrl, SocialMediaChannel channelType) {
         this.connection = connection;
         this.client = client;
         this.projectName = projectName;
         this.projectUrl = projectUrl;
+        this.repositoryUrl = repositoryUrl;
+        this.channelType = channelType;
     }
 
     public static void main(String[] args) throws Exception {
         GzippedMailArchiveCrawler crawler = new GzippedMailArchiveCrawler(
                 new Client(),
-                new IssueTrackerConnector().getConnection(),
+                getDatabaseConnection(),
                 "HIBERNATE",
                 "http://hibernate.org",
-                "http://lists.jboss.org/pipermail/hibernate-dev/");
+                "http://lists.jboss.org/pipermail/hibernate-dev/",
+                EMAIL);
 
         crawler.run();
     }
@@ -73,7 +79,7 @@ public class GzippedMailArchiveCrawler {
     }
 
     public void run() throws InterruptedException {
-        WebResource resource = client.resource(baseUrl);
+        WebResource resource = client.resource(repositoryUrl);
         ClientResponse response = resource.accept(TEXT_HTML).get(ClientResponse.class);
         String output = response.getEntity(String.class);
 
@@ -89,7 +95,7 @@ public class GzippedMailArchiveCrawler {
         }
 
         DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(connection);
-        EmailParser parser = new EmailParser(helperMethods, projectName, projectUrl);
+        EmailParser parser = new EmailParser(helperMethods, projectName, projectUrl, repositoryUrl, channelType);
 
         LOGGER.info("Total Email Files: " + urls.size());
 
@@ -108,7 +114,7 @@ public class GzippedMailArchiveCrawler {
     }
 
     private String doForEachFile(int i, int limit, String url) throws InterruptedException {
-        String fileUrl = baseUrl + url;
+        String fileUrl = repositoryUrl + url;
         String emails = null;
         try {
             InputStream is = getInputStreamForUrl(fileUrl);

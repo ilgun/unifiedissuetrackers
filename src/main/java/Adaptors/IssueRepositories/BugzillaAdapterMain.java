@@ -1,7 +1,7 @@
 package Adaptors.IssueRepositories;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
-import DatabaseConnectors.IssueTrackerConnector;
+import Adaptors.HelperMethods.TableColumnName;
 import b4j.core.*;
 import b4j.core.session.BugzillaHttpSession;
 import com.sun.jersey.api.client.Client;
@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static java.lang.ClassLoader.getSystemClassLoader;
@@ -68,7 +69,7 @@ public class BugzillaAdapterMain {
     public static void main(String[] args) throws IOException, SQLException {
         BugzillaAdapterMain main = new BugzillaAdapterMain(
                 new Client(),
-                new IssueTrackerConnector().getConnection(),
+                getDatabaseConnection(),
                 new BugzillaHttpSession(),
                 "PULP",
                 "http://www.pulpproject.org",
@@ -181,7 +182,7 @@ public class BugzillaAdapterMain {
                 String field = tds.get(2).text();
                 String from = tds.get(3).text();
                 String to = tds.get(4).text();
-                userId = helperMethods.getOrCreateRepositoryUser(username, username, issueRepositoryId);
+                userId = helperMethods.getOrCreateIssueRepositoryUser(username, username, issueRepositoryId);
                 helperMethods.saveHistory(databaseIssueId, from, to, field, userId, date);
             } // User is same however, there is new activity.
             else {
@@ -210,7 +211,7 @@ public class BugzillaAdapterMain {
         if (isEmpty(assigneeEmail)) {
             assigneeEmail = assigneeName;
         }
-        return helperMethods.getOrCreateRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
+        return helperMethods.getOrCreateIssueRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
     }
 
     public int getAssigneeId(User assignee) {
@@ -225,7 +226,7 @@ public class BugzillaAdapterMain {
         if (isEmpty(assigneeEmail)) {
             assigneeEmail = assigneeName;
         }
-        return helperMethods.getOrCreateRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
+        return helperMethods.getOrCreateIssueRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
     }
 
     public int saveIssue(String issueId, String issueType, String summary, int reporterUserId, String createdDate, String description, int priorityId, String status, String projectName,
@@ -395,7 +396,7 @@ public class BugzillaAdapterMain {
                 date = history.get("when").asText();
             }
 
-            int userId = helperMethods.getOrCreateRepositoryUser(author, author, issueRepositoryId);
+            int userId = helperMethods.getOrCreateIssueRepositoryUser(author, author, issueRepositoryId);
             JsonNode changes = history.get("changes");
             for (JsonNode anItem : changes) {
                 String field = anItem.get("field_name").asText();

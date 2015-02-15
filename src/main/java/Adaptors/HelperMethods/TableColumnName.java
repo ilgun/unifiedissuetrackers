@@ -1,4 +1,4 @@
-package Adaptors.IssueRepositories;
+package Adaptors.HelperMethods;
 
 public enum TableColumnName {
     projectName,
@@ -15,5 +15,12 @@ public enum TableColumnName {
     value,
     userId,
     accountName,
-    userName, userEmail, projectId, originalEntryId, subject, customFieldId
+    userName,
+    userEmail,
+    projectId,
+    originalEntryId,
+    subject,
+    socialMediaRepositoryId,
+    repositoryUrl,
+    customFieldId
 }

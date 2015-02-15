@@ -1,11 +1,9 @@
 package Adaptors.SocialMedia;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
+import Model.SocialMedia.SocialMediaChannel;
 import org.apache.commons.io.IOUtils;
-import org.apache.james.mime4j.dom.BinaryBody;
-import org.apache.james.mime4j.dom.Header;
-import org.apache.james.mime4j.dom.Message;
-import org.apache.james.mime4j.dom.TextBody;
+import org.apache.james.mime4j.dom.*;
 import org.apache.james.mime4j.dom.address.Address;
 import org.apache.james.mime4j.dom.address.AddressList;
 import org.apache.james.mime4j.dom.address.Mailbox;
@@ -25,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static Model.SocialMedia.SocialMediaChannel.EMAIL;
 import static com.google.common.base.Splitter.on;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.stream.Collectors.toList;
@@ -40,15 +37,20 @@ public class EmailParser {
     private final DatabaseHelperMethods helperMethods;
     private final String projectName;
     private final String projectUrl;
+    private final String repositoryUrl;
+    private final SocialMediaChannel channelType;
 
-    public EmailParser(DatabaseHelperMethods helperMethods, String projectName, String projectUrl) {
+    public EmailParser(DatabaseHelperMethods helperMethods, String projectName, String projectUrl, String repositoryUrl, SocialMediaChannel channelType) {
         this.helperMethods = helperMethods;
         this.projectName = projectName;
         this.projectUrl = projectUrl;
+        this.repositoryUrl = repositoryUrl;
+        this.channelType = channelType;
     }
 
     public void parseAndSaveEmails(String emailsInMbox) throws IOException {
         int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
+        int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId,repositoryUrl, channelType);
 
         DefaultMessageBuilder messageBuilder = getMessageBuilder();
         List<String> emails = newArrayList(on("From ").split(emailsInMbox));
@@ -63,12 +65,12 @@ public class EmailParser {
 
                     String messageId = message.getMessageId();
                     String sentDate = message.getDate().toString();
-                    List<String> replyTo = getReplyTo(message.getReplyTo());
+                    String replyTo = getReplyTo(message.getHeader());
                     String subject = message.getSubject();
                     String context = getBody(message);
 
                     int userId = helperMethods.getOrCreateSocialMediaUser(projectId, join(fromName, ","), join(fromEmail, ","));
-                    helperMethods.getOrSaveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
+                    helperMethods.getOrSaveSocialMediaEntry(socialMediaRepositoryId, userId, messageId, context, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
                     logCount();
                 } else if (message.getHeader().getField("from") != null) {
                     Header header = message.getHeader();
@@ -84,7 +86,7 @@ public class EmailParser {
                     String subject = header.getField("subject").getBody();
                     String sentDate = header.getField("date").getBody();
 
-                    helperMethods.getOrSaveSocialMediaEntry(projectId, userId, messageId, context, EMAIL, replyTo, to, subject, sentDate, null, null, null, null);
+                    helperMethods.getOrSaveSocialMediaEntry(socialMediaRepositoryId, userId, messageId, context, replyTo, to, subject, sentDate, null, null, null, null);
                     logCount();
                 }
             }
@@ -106,13 +108,17 @@ public class EmailParser {
     }
 
     private String getBody(Message message) throws IOException {
-        String context;
+        String context = null;
+        Body rawBody = message.getBody();
         try {
-            TextBody reader = (TextBody) message.getBody();
+            TextBody reader = (TextBody) rawBody;
             context = IOUtils.toString(reader.getReader());
         } catch (Exception e) {
-            BinaryBody body = (BinaryBody) message.getBody();
-            context = IOUtils.toString(body.getInputStream());
+            try {
+                BinaryBody body = (BinaryBody) rawBody;
+                context = IOUtils.toString(body.getInputStream());
+            } catch (Exception ex) {
+            }
         }
         return context;
     }
@@ -133,13 +139,6 @@ public class EmailParser {
         if ((i % 2000) == 0) {
             LOGGER.info("Parsed Email Count: " + i);
         }
-    }
-
-    private List<String> getReplyTo(AddressList addresses) {
-        List<String> replies = newArrayList();
-        if (addresses == null) return replies;
-        replies.addAll(addresses.stream().map(Address::toString).collect(toList()));
-        return replies;
     }
 
     private List<String> fromEmail(MailboxList mailboxList) {

@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import static java.lang.Class.forName;
 
 public class IssueTrackerConnector {
-    public Connection getConnection() {
+    public static Connection getDatabaseConnection() {
         Connection conn = null;
         try {
             forName("com.mysql.jdbc.Driver");

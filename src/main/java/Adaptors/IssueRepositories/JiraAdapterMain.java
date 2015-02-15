@@ -2,7 +2,7 @@ package Adaptors.IssueRepositories;
 
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
-import DatabaseConnectors.IssueTrackerConnector;
+import Adaptors.HelperMethods.TableColumnName;
 import Model.IssueTrackers.Comment;
 import Model.IssueTrackers.CustomField;
 import Model.IssueTrackers.IssueLink;
@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static Model.IssueTrackers.CommentBuilder.aComment;
 import static Model.IssueTrackers.CustomFieldBuilder.aCustomField;
 import static Model.IssueTrackers.IssueLinkBuilder.anIssueLink;
@@ -63,7 +64,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     public static void main(String[] args) throws IOException {
         JiraAdapterMain main = new JiraAdapterMain(
                 new Client(),
-                new IssueTrackerConnector().getConnection(),
+                getDatabaseConnection(),
                 "HIVE",
                 "https://hive.apache.org",
                 "https://issues.apache.org/jira",
@@ -186,7 +187,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             if (history.get("created") != null) {
                 date = history.get("created").asText();
             }
-            int userId = helperMethods.getOrCreateRepositoryUser(authorName, authorEmail, issueRepositoryId);
+            int userId = helperMethods.getOrCreateIssueRepositoryUser(authorName, authorEmail, issueRepositoryId);
             JsonNode itemsNode = history.get("items");
             for (JsonNode anItem : itemsNode) {
                 String field = anItem.get("field").asText();
@@ -245,7 +246,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     @Override
     public int getReporterId(JsonNode fields) {
         JsonNode reporterNode = fields.get("reporter");
-        if(reporterNode == null || reporterNode.isNull()) return helperMethods.getOrCreateRepositoryUser("UserNotFound!?!", "UserNotFound!?!", issueRepositoryId);
+        if(reporterNode == null || reporterNode.isNull()) return helperMethods.getOrCreateIssueRepositoryUser("UserNotFound!?!", "UserNotFound!?!", issueRepositoryId);
         String reporterName = reporterNode.get("name").asText();
         String reporterEmail;
         if (reporterNode.get("emailAddress") != null) {
@@ -255,7 +256,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         } else {
             reporterEmail = reporterName;
         }
-        return helperMethods.getOrCreateRepositoryUser(reporterName, reporterEmail, issueRepositoryId);
+        return helperMethods.getOrCreateIssueRepositoryUser(reporterName, reporterEmail, issueRepositoryId);
     }
 
     @Override
@@ -393,7 +394,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             } else {
                 assigneeEmail = assignee.get("displayName").asText();
             }
-            return helperMethods.getOrCreateRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
+            return helperMethods.getOrCreateIssueRepositoryUser(assigneeName, assigneeEmail, issueRepositoryId);
         } else {
             return 0;
         }
@@ -471,7 +472,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     private List<IssueLink> getIssueLinks(JsonNode fields) {
         List<IssueLink> links = newArrayList();
         JsonNode issueLinks = fields.get("issuelinks");
-        if (!issueLinks.isNull()) {
+        if (!issueLinks.isNull() && issueLinks.size() >0) {
             for (int i = 0; i < issueLinks.size(); i++) {
                 JsonNode outwardIssue = issueLinks.get(i).get("outwardIssue");
                 JsonNode inwardIssue = issueLinks.get(i).get("inwardIssue");
@@ -479,10 +480,10 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
 
                 String linkedIssueId;
                 String linkedIssueType;
-                if (outwardIssue != null && outwardIssue.isNull()) {
+                if (outwardIssue != null && !outwardIssue.isNull()) {
                     linkedIssueId = outwardIssue.get("id").asText();
                     linkedIssueType = type.get("outward").asText();
-                } else if (inwardIssue != null && inwardIssue.isNull()) {
+                } else if (inwardIssue != null && !inwardIssue.isNull()) {
                     linkedIssueId = inwardIssue.get("id").asText();
                     linkedIssueType = type.get("inward").asText();
                 } else {

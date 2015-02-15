@@ -1,11 +1,12 @@
 package Adaptors.HelperMethods;
 
-import Adaptors.IssueRepositories.TableColumnName;
 import Model.SocialMedia.SocialMediaChannel;
+import Model.SocialMedia.SocialMediaEvent;
 
 import java.sql.*;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.StringJoiner;
 
 import static com.google.common.collect.Maps.newHashMap;
 
@@ -97,13 +98,12 @@ public class DatabaseHelperMethods {
             }
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return projectId;
     }
 
-    public int getOrCreateRepositoryUser(String authorName, String authorEmail, int issueRepositoryId) {
+    public int getOrCreateIssueRepositoryUser(String authorName, String authorEmail, int issueRepositoryId) {
         int output = 0;
 
         Map<String, TableColumnName> authorNameMap = newHashMap();
@@ -117,15 +117,16 @@ public class DatabaseHelperMethods {
 
         try {
             int userId = getOrCreateUser(authorName);
-            int userNameTableId = getOrCreateUserName(userId, authorEmail);
             String sql = "INSERT INTO issuerepositoryuser (`userId`,\n" +
                     "`issueRepositoryId`,\n" +
-                    "`username`)" +
+                    "`userName`)" +
+                    "`userEmail`)" +
                     "VALUES (?, ?, ?)";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
             statement.setInt(1, userId);
             statement.setInt(2, issueRepositoryId);
             statement.setString(3, authorName);
+            statement.setString(4, authorEmail);
             if (statement.executeUpdate() > 0) {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
@@ -135,44 +136,60 @@ public class DatabaseHelperMethods {
             }
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return output;
     }
 
-    private int getOrCreateUserName(int userId, String authorEmail) {
-        int userNameId = 0;
+    public void createUserRelationship(String firstUserName, String secondUserName) {
+        Map<String, TableColumnName> firstUser = newHashMap();
+        firstUser.put(firstUserName, TableColumnName.name);
+        int firstUserId = checkIfExits("user", firstUser);
 
-        Map<String, TableColumnName> authorEmailMap = newHashMap();
-        authorEmailMap.put(authorEmail, TableColumnName.userId);
+        Map<String, TableColumnName> secondUser = newHashMap();
+        secondUser.put(secondUserName, TableColumnName.name);
+        int secondUserId = checkIfExits("user", secondUser);
 
-        Map<Integer, TableColumnName> accountNameMap = newHashMap();
-        accountNameMap.put(userId, TableColumnName.accountName);
+        String firstRelatedUserIds = getRelatedUserIdsFor(firstUserId);
+        String secondRelatedUserIds = getRelatedUserIdsFor(secondUserId);
 
-        int foundId = checkIfExits("username", authorEmailMap, accountNameMap);
-        if (foundId != 0) return foundId;
+        String finalRelatedIdsForFirstUser = getFinalRelatedIds(secondUserId, firstRelatedUserIds);
+        String finalRelatedIdsForSecondUser = getFinalRelatedIds(firstUserId, secondRelatedUserIds);
 
+        createRelationshipFor(firstUserId, finalRelatedIdsForFirstUser);
+        createRelationshipFor(secondUserId, finalRelatedIdsForSecondUser);
+    }
+
+    private void createRelationshipFor(int firstUserId, String relatedUserIds) {
         try {
-            String sql = "INSERT INTO username (`userId`,\n" +
-                    "`accountName`)" +
-                    "VALUES (?, ?)";
+            String sql = "UPDATE user SET relatedUserIds = ?" +
+                    "where id = ?";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
-            statement.setInt(1, userId);
-            statement.setString(2, authorEmail);
+            statement.setString(1, relatedUserIds);
+            statement.setInt(2, firstUserId);
             if (statement.executeUpdate() > 0) {
-                ResultSet generatedKeys = statement.getGeneratedKeys();
-                if (null != generatedKeys && generatedKeys.next()) {
-                    userNameId = generatedKeys.getInt(1);
-                    generatedKeys.close();
-                }
             }
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
-        return userNameId;
+    }
+
+    private String getRelatedUserIdsFor(int firstUserId) {
+        String relatedUserIds = null;
+        try {
+            String relatedUserSql = "SELECT relatedUserIds from user where id = ?";
+            PreparedStatement preparedStatement = connection.prepareStatement(relatedUserSql);
+            preparedStatement.setInt(1, firstUserId);
+            ResultSet rs = preparedStatement.executeQuery(relatedUserSql);
+            while (rs.next()) {
+                relatedUserIds = rs.getString("relatedUserIds");
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return relatedUserIds;
     }
 
     private int getOrCreateUser(String authorName) {
@@ -224,7 +241,6 @@ public class DatabaseHelperMethods {
             preparedStatement.executeUpdate();
             preparedStatement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -256,7 +272,6 @@ public class DatabaseHelperMethods {
             }
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return repositoryId;
@@ -324,7 +339,6 @@ public class DatabaseHelperMethods {
             }
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
         return newCustomFieldId;
@@ -351,7 +365,7 @@ public class DatabaseHelperMethods {
     }
 
     public void saveComment(int issueRepositoryId, int databaseIssueId, String authorName, String authorEmail, String content) {
-        int userId = getOrCreateRepositoryUser(authorName, authorEmail, issueRepositoryId);
+        int userId = getOrCreateIssueRepositoryUser(authorName, authorEmail, issueRepositoryId);
         try {
             String sql = "INSERT INTO comments (`issueId`,\n" +
                     "`userId`,\n" +
@@ -366,7 +380,6 @@ public class DatabaseHelperMethods {
             preparedStatement.executeUpdate();
             preparedStatement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
@@ -388,53 +401,54 @@ public class DatabaseHelperMethods {
             preparedStatement.executeUpdate();
             preparedStatement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
 
-    public int getOrCreateSocialMediaUser(int projectId, String name, String email) {
-        int userId = 0;
+    public int getOrCreateSocialMediaUser(int socialMediaRepositoryId, String authorName, String authorEmail) {
+        int socialMediaUserId = 0;
 
         Map<Integer, TableColumnName> projectIdMap = newHashMap();
-        projectIdMap.put(projectId, TableColumnName.projectId);
+        projectIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
 
         Map<String, TableColumnName> stringMap = newHashMap();
-        stringMap.put(name, TableColumnName.userName);
-        stringMap.put(email, TableColumnName.userEmail);
+        stringMap.put(authorName, TableColumnName.userName);
+        stringMap.put(authorEmail, TableColumnName.userEmail);
 
         int user = checkIfExits("socialmediauser", stringMap, projectIdMap);
         if (user != 0) return user;
 
         try {
-            String sql = "INSERT INTO socialmediauser (`projectId`,\n" +
+            int userId = getOrCreateUser(authorName);
+            String sql = "INSERT INTO socialmediauser (`socialMediaRepositoryId`,\n" +
+                    "`userId`,\n" +
                     "`userName`,\n" +
                     "`userEmail`)" +
                     "VALUES (?, ?, ?)";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
-            statement.setInt(1, projectId);
-            statement.setString(2, name);
-            statement.setString(3, email);
+            statement.setInt(1, socialMediaRepositoryId);
+            statement.setInt(2, userId);
+            statement.setString(2, authorName);
+            statement.setString(3, authorEmail);
 
             if (statement.executeUpdate() > 0) {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
                 if (null != generatedKeys && generatedKeys.next()) {
-                    userId = generatedKeys.getInt(1);
+                    socialMediaUserId = generatedKeys.getInt(1);
                     generatedKeys.close();
                 }
             }
             statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
-        return userId;
+        return socialMediaUserId;
     }
 
-    public void getOrSaveSocialMediaEntry(int projectId, int senderUserId, String originalEntryId, String context, SocialMediaChannel channelType, String inResponseTo,
+    public void getOrSaveSocialMediaEntry(int socialMediaRepositoryId, int senderUserId, String originalEntryId, String context, String inResponseTo,
                                           String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, String location) {
         Map<Integer, TableColumnName> projectIdMap = newHashMap();
-        projectIdMap.put(projectId, TableColumnName.projectId);
+        projectIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
 
         Map<String, TableColumnName> stringMap = newHashMap();
         stringMap.put(originalEntryId, TableColumnName.originalEntryId);
@@ -443,11 +457,10 @@ public class DatabaseHelperMethods {
         int entryId = checkIfExits("socialmediaentries", stringMap, projectIdMap);
         if (entryId != 0) return;
         try {
-            String sql = "INSERT INTO socialmediaentries (`projectId`,\n" +
+            String sql = "INSERT INTO socialmediaentries (`socialMediaRepositoryId`,\n" +
                     "`senderUserId`,\n" +
                     "`originalEntryId`,\n" +
                     "`context`,\n" +
-                    "`channelType`,\n" +
                     "`inResponseTo`,\n" +
                     "`receiver`,\n" +
                     "`subject`,\n" +
@@ -456,41 +469,97 @@ public class DatabaseHelperMethods {
                     "`seenDate`,\n" +
                     "`attachments`,\n" +
                     "`location`)" +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
-            preparedStatement.setInt(1, projectId);
+            preparedStatement.setInt(1, socialMediaRepositoryId);
             preparedStatement.setInt(2, senderUserId);
             preparedStatement.setString(3, originalEntryId);
             preparedStatement.setString(4, context);
-            preparedStatement.setString(5, channelType.name());
-            preparedStatement.setString(6, inResponseTo);
-            preparedStatement.setString(7, receiver);
-            preparedStatement.setString(8, subject);
-            preparedStatement.setString(9, sentDate);
+            preparedStatement.setString(5, inResponseTo);
+            preparedStatement.setString(6, receiver);
+            preparedStatement.setString(7, subject);
+            preparedStatement.setString(8, sentDate);
+            preparedStatement.setString(9, null);
             preparedStatement.setString(10, null);
             preparedStatement.setString(11, null);
-            preparedStatement.setString(12, null);
-            preparedStatement.setString(13, location);
+            preparedStatement.setString(12, location);
 
             preparedStatement.executeUpdate();
             preparedStatement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
 
-    public int getLastInsertedId() {
-        try (Statement st = connection.createStatement();
-             ResultSet rs = st.executeQuery("select MAX(id) as last_id FROM issues")) {
-            rs.next();
-            int lastId = rs.getInt("last_id");
+    public int getOrCreateSocialMediaRepository(int projectId, String repositoryUrl, SocialMediaChannel channelType) {
+        int repositoryId = 0;
 
-            return lastId;
+        Map<String, TableColumnName> mappedValues = newHashMap();
+        mappedValues.put(repositoryUrl, TableColumnName.repositoryUrl);
+
+        int existingId = checkIfExits("socialmediarepository", mappedValues);
+        if (existingId != 0) return existingId;
+
+        try {
+            String sql = "INSERT INTO socialmediarepository (`projectId`,\n" +
+                    "`repositoryUrl`,\n" +
+                    "`repositoryType`)" +
+                    "VALUES (?, ?, ?)";
+            PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
+            statement.setInt(1, projectId);
+            statement.setString(2, repositoryUrl);
+            statement.setString(3, channelType.name());
+            if (statement.executeUpdate() > 0) {
+                ResultSet generatedKeys = statement.getGeneratedKeys();
+                if (null != generatedKeys && generatedKeys.next()) {
+                    repositoryId = generatedKeys.getInt(1);
+                    generatedKeys.close();
+                }
+            }
+            statement.close();
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
+        return repositoryId;
+    }
+
+    public void createSocialMediaEvent(int socialMediaRepositoryId, int socialMediaUserId, String eventDate, SocialMediaEvent eventType, String content) {
+        try {
+            String sql = "INSERT INTO socialmediaevents (`socialMediaRepositoryId`,\n" +
+                    "`socialMediaUserId`,\n" +
+                    "`eventDate`,\n" +
+                    "`eventType`,\n" +
+                    "`content`)" +
+                    "VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, socialMediaRepositoryId);
+            preparedStatement.setInt(2, socialMediaUserId);
+            preparedStatement.setString(3, eventDate);
+            preparedStatement.setString(4, eventType.name());
+            preparedStatement.setString(5, content);
+
+            preparedStatement.executeUpdate();
+            preparedStatement.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int getLastInsertedIdFor(TableName tableName) {
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("select MAX(id) as last_id FROM " + tableName)) {
+            rs.next();
+            return rs.getInt("last_id");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String getFinalRelatedIds(int userId, String relatedUserIds) {
+        StringJoiner joiner = new StringJoiner(",");
+        joiner.add(String.valueOf(userId));
+        joiner.add(relatedUserIds);
+        return joiner.toString();
     }
 }
