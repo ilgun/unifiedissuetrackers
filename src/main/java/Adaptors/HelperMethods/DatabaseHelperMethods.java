@@ -6,9 +6,12 @@ import Model.SocialMedia.SocialMediaEvent;
 import java.sql.*;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.StringJoiner;
+import java.util.Set;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
+import static com.google.common.collect.Sets.newHashSet;
+import static java.lang.String.join;
 
 public class DatabaseHelperMethods {
     private final Connection connection;
@@ -119,7 +122,7 @@ public class DatabaseHelperMethods {
             int userId = getOrCreateUser(authorName);
             String sql = "INSERT INTO issuerepositoryuser (`userId`,\n" +
                     "`issueRepositoryId`,\n" +
-                    "`userName`)" +
+                    "`userName`" +
                     "`userEmail`)" +
                     "VALUES (?, ?, ?)";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
@@ -150,8 +153,8 @@ public class DatabaseHelperMethods {
         secondUser.put(secondUserName, TableColumnName.name);
         int secondUserId = checkIfExits("user", secondUser);
 
-        String firstRelatedUserIds = getRelatedUserIdsFor(firstUserId);
-        String secondRelatedUserIds = getRelatedUserIdsFor(secondUserId);
+        Set<String> firstRelatedUserIds = getRelatedUserIdsFor(firstUserId);
+        Set<String> secondRelatedUserIds = getRelatedUserIdsFor(secondUserId);
 
         String finalRelatedIdsForFirstUser = getFinalRelatedIds(secondUserId, firstRelatedUserIds);
         String finalRelatedIdsForSecondUser = getFinalRelatedIds(firstUserId, secondRelatedUserIds);
@@ -162,34 +165,35 @@ public class DatabaseHelperMethods {
 
     private void createRelationshipFor(int firstUserId, String relatedUserIds) {
         try {
-            String sql = "UPDATE user SET relatedUserIds = ?" +
-                    "where id = ?";
+            String sql = "UPDATE user SET relatedUserIds = ? where id = ?";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
             statement.setString(1, relatedUserIds);
             statement.setInt(2, firstUserId);
-            if (statement.executeUpdate() > 0) {
-            }
+
+            statement.executeUpdate();
             statement.close();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private String getRelatedUserIdsFor(int firstUserId) {
+    private Set<String> getRelatedUserIdsFor(int firstUserId) {
         String relatedUserIds = null;
         try {
             String relatedUserSql = "SELECT relatedUserIds from user where id = ?";
             PreparedStatement preparedStatement = connection.prepareStatement(relatedUserSql);
             preparedStatement.setInt(1, firstUserId);
-            ResultSet rs = preparedStatement.executeQuery(relatedUserSql);
+
+            ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
                 relatedUserIds = rs.getString("relatedUserIds");
             }
-
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return relatedUserIds;
+        if (relatedUserIds == null) return newHashSet();
+
+        return newHashSet(newArrayList(relatedUserIds.trim().split(",")));
     }
 
     private int getOrCreateUser(String authorName) {
@@ -215,7 +219,7 @@ public class DatabaseHelperMethods {
             }
             statement.close();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Username was: " + authorName, e);
         }
         return userId;
     }
@@ -406,30 +410,31 @@ public class DatabaseHelperMethods {
     }
 
     public int getOrCreateSocialMediaUser(int socialMediaRepositoryId, String authorName, String authorEmail) {
+        String trimmedUserName = authorName.trim();
         int socialMediaUserId = 0;
 
-        Map<Integer, TableColumnName> projectIdMap = newHashMap();
-        projectIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
+        Map<Integer, TableColumnName> socialMediaRepositoryIdMap = newHashMap();
+        socialMediaRepositoryIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
 
-        Map<String, TableColumnName> stringMap = newHashMap();
-        stringMap.put(authorName, TableColumnName.userName);
-        stringMap.put(authorEmail, TableColumnName.userEmail);
+        Map<String, TableColumnName> userMap = newHashMap();
+        userMap.put(trimmedUserName, TableColumnName.userName);
+        userMap.put(authorEmail, TableColumnName.userEmail);
 
-        int user = checkIfExits("socialmediauser", stringMap, projectIdMap);
+        int user = checkIfExits("socialmediauser", userMap, socialMediaRepositoryIdMap);
         if (user != 0) return user;
 
         try {
-            int userId = getOrCreateUser(authorName);
-            String sql = "INSERT INTO socialmediauser (`socialMediaRepositoryId`,\n" +
-                    "`userId`,\n" +
+            int userId = getOrCreateUser(trimmedUserName);
+            String sql = "INSERT INTO socialmediauser (`userId`,\n" +
+                    "`socialMediaRepositoryId`,\n" +
                     "`userName`,\n" +
                     "`userEmail`)" +
-                    "VALUES (?, ?, ?)";
+                    "VALUES (?, ?, ?, ?)";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
-            statement.setInt(1, socialMediaRepositoryId);
-            statement.setInt(2, userId);
-            statement.setString(2, authorName);
-            statement.setString(3, authorEmail);
+            statement.setInt(1, userId);
+            statement.setInt(2, socialMediaRepositoryId);
+            statement.setString(3, trimmedUserName);
+            statement.setString(4, authorEmail);
 
             if (statement.executeUpdate() > 0) {
                 ResultSet generatedKeys = statement.getGeneratedKeys();
@@ -445,17 +450,18 @@ public class DatabaseHelperMethods {
         return socialMediaUserId;
     }
 
-    public void getOrSaveSocialMediaEntry(int socialMediaRepositoryId, int senderUserId, String originalEntryId, String context, String inResponseTo,
-                                          String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, String location) {
-        Map<Integer, TableColumnName> projectIdMap = newHashMap();
-        projectIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
+    public void saveSocialMediaEntry(int socialMediaRepositoryId, int senderUserId, String originalEntryId, String context, String inResponseTo,
+                                     String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, String location) {
 
-        Map<String, TableColumnName> stringMap = newHashMap();
-        stringMap.put(originalEntryId, TableColumnName.originalEntryId);
-        stringMap.put(subject, TableColumnName.subject);
+        /*Map<Integer, TableColumnName> socialMediaRepositoryIdMap = newHashMap();
+        socialMediaRepositoryIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
 
-        int entryId = checkIfExits("socialmediaentries", stringMap, projectIdMap);
-        if (entryId != 0) return;
+        Map<String, TableColumnName> valuesMap = newHashMap();
+        valuesMap.put(originalEntryId, TableColumnName.originalEntryId);
+        valuesMap.put(context, TableColumnName.context);
+
+        int entryId = checkIfExits("socialmediaentries", valuesMap, socialMediaRepositoryIdMap);
+        if (entryId != 0) return;*/
         try {
             String sql = "INSERT INTO socialmediaentries (`socialMediaRepositoryId`,\n" +
                     "`senderUserId`,\n" +
@@ -556,10 +562,8 @@ public class DatabaseHelperMethods {
         }
     }
 
-    private String getFinalRelatedIds(int userId, String relatedUserIds) {
-        StringJoiner joiner = new StringJoiner(",");
-        joiner.add(String.valueOf(userId));
-        joiner.add(relatedUserIds);
-        return joiner.toString();
+    private String getFinalRelatedIds(int userId, Set<String> relatedUserIds) {
+        relatedUserIds.add(String.valueOf(userId));
+        return join(",", relatedUserIds);
     }
 }

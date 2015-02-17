@@ -22,5 +22,6 @@ public enum TableColumnName {
     subject,
     socialMediaRepositoryId,
     repositoryUrl,
+    context,
     customFieldId
 }

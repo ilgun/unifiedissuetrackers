@@ -60,7 +60,7 @@ public class TwitterCrawler {
                     String location = getLocation(tweet);
                     Date createdDate = tweet.getCreatedAt();
 
-                    helperMethods.getOrSaveSocialMediaEntry(socialMediaRepositoryId, senderUserId, originalEntryId, text,
+                    helperMethods.saveSocialMediaEntry(socialMediaRepositoryId, senderUserId, originalEntryId, text,
                             inResponseTo, null, subject, createdDate.toString(), null, null, null, location);
                     logCount();
                 }

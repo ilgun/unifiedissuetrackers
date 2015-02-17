@@ -6,5 +6,6 @@ public enum SocialMediaEvent {
     SERVERMSG,
     ACTION,
     PART,
-    JOIN
+    TOPIC_CHANGE,
+    SETS_MODE, JOIN
 }
