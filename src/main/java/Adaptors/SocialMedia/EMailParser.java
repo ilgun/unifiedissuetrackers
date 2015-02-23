@@ -48,12 +48,12 @@ public class EmailParser {
         this.channelType = channelType;
     }
 
-    public void parseAndSaveEmails(String emailsInMbox) throws IOException {
+    public void parseAndSaveEmails(String emailsInServer) throws IOException {
         int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
         int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId,repositoryUrl, channelType);
 
         DefaultMessageBuilder messageBuilder = getMessageBuilder();
-        List<String> emails = newArrayList(on("From ").split(emailsInMbox));
+        List<String> emails = newArrayList(on("From ").split(emailsInServer));
 
         for (String anEmail : emails) {
             Message message = messageBuilder.parseMessage(toInputStream(anEmail, "UTF-8"));
@@ -78,7 +78,6 @@ public class EmailParser {
 
                     String fromName = extractNameFrom(from);
                     String fromEmail = extractEmailFrom(from);
-                    int userId = helperMethods.getOrCreateSocialMediaUser(projectId, fromName, fromEmail);
                     String messageId = header.getField("message-id").getBody();
                     String context = getBody(message);
                     String replyTo = getReplyTo(header);
@@ -86,9 +85,11 @@ public class EmailParser {
                     String subject = header.getField("subject").getBody();
                     String sentDate = header.getField("date").getBody();
 
+                    int userId = helperMethods.getOrCreateSocialMediaUser(projectId, fromName, fromEmail);
                     helperMethods.saveSocialMediaEntry(socialMediaRepositoryId, userId, messageId, context, replyTo, to, subject, sentDate, null, null, null, null);
                     logCount();
                 }
+                helperMethods.commitTransaction();
             }
         }
     }
