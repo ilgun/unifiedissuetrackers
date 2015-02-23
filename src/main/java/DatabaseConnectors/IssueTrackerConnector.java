@@ -13,11 +13,13 @@ public class IssueTrackerConnector {
             forName("com.mysql.jdbc.Driver");
             conn = DriverManager.getConnection("jdbc:mysql://localhost/issueTrackers?" +
                     "user=root&password=156609768&autoReconnect=true&tcpKeepAlive=true&failOverReadOnly=false&maxReconnects=10");
+            conn.setAutoCommit(false);
         } catch (Exception e) {
             e.printStackTrace();
             try {
                 conn = DriverManager.getConnection("jdbc:mysql://localhost/issueTrackers?" +
                         "user=root&password=156609768&autoReconnect=true&tcpKeepAlive=true&failOverReadOnly=false&maxReconnects=10");
+                conn.setAutoCommit(false);
             } catch (SQLException e1) {
                 e1.printStackTrace();
             }

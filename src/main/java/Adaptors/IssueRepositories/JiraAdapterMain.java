@@ -62,7 +62,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     }
 
     public static void main(String[] args) throws IOException {
-        JiraAdapterMain main = new JiraAdapterMain(
+        JiraAdapterMain hiveIngestion = new JiraAdapterMain(
                 new Client(),
                 getDatabaseConnection(),
                 "HIVE",
@@ -70,7 +70,16 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
                 "https://issues.apache.org/jira",
                 "JIRA");
 
-        main.run();
+        JiraAdapterMain hibernateIngestion = new JiraAdapterMain(
+                new Client(),
+                getDatabaseConnection(),
+                "HIBERNATE",
+                "http://hibernate.org",
+                "https://hibernate.atlassian.net",
+                "JIRA");
+
+        hiveIngestion.run();
+        hibernateIngestion.run();
     }
 
     public void run() throws IOException {
@@ -93,6 +102,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             JsonNode issues = root.get("issues");
             for (int i = 0; i < issues.size(); i++) {
                 saveIssue(issues.get(i), names);
+                helperMethods.commitTransaction();
             }
             startPoint = startPoint + 100;
             LOGGER.info(startPoint);

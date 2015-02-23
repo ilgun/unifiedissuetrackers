@@ -48,7 +48,7 @@ public class IrcLogLineParser {
                 helpers.getOrCreateSocialMediaUser(socialMediaRepositoryId, newUsername, newUsername);
                 int socialMediaUserId = helpers.getOrCreateSocialMediaUser(socialMediaRepositoryId, oldUsername, oldUsername);
                 helpers.createSocialMediaEvent(socialMediaRepositoryId, socialMediaUserId, parseIrcDate(date), NICKCHANGE, oldUsername + " to " + newUsername);
-                helpers.createUserRelationship(newUsername, oldUsername);
+                //helpers.createUserRelationship(newUsername, oldUsername);
 
                 break;
             }

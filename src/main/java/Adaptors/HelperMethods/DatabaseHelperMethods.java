@@ -122,9 +122,9 @@ public class DatabaseHelperMethods {
             int userId = getOrCreateUser(authorName);
             String sql = "INSERT INTO issuerepositoryuser (`userId`,\n" +
                     "`issueRepositoryId`,\n" +
-                    "`userName`" +
+                    "`userName`,\n" +
                     "`userEmail`)" +
-                    "VALUES (?, ?, ?)";
+                    "VALUES (?, ?, ?, ?)";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
             statement.setInt(1, userId);
             statement.setInt(2, issueRepositoryId);
@@ -144,7 +144,7 @@ public class DatabaseHelperMethods {
         return output;
     }
 
-    public void createUserRelationship(String firstUserName, String secondUserName) {
+    public void createUserRelationship(String firstUserName, String secondUserName, String reason) {
         Map<String, TableColumnName> firstUser = newHashMap();
         firstUser.put(firstUserName, TableColumnName.name);
         int firstUserId = checkIfExits("user", firstUser);
@@ -159,16 +159,17 @@ public class DatabaseHelperMethods {
         String finalRelatedIdsForFirstUser = getFinalRelatedIds(secondUserId, firstRelatedUserIds);
         String finalRelatedIdsForSecondUser = getFinalRelatedIds(firstUserId, secondRelatedUserIds);
 
-        createRelationshipFor(firstUserId, finalRelatedIdsForFirstUser);
-        createRelationshipFor(secondUserId, finalRelatedIdsForSecondUser);
+        createRelationshipFor(firstUserId, finalRelatedIdsForFirstUser, reason);
+        createRelationshipFor(secondUserId, finalRelatedIdsForSecondUser, reason);
     }
 
-    private void createRelationshipFor(int firstUserId, String relatedUserIds) {
+    private void createRelationshipFor(int firstUserId, String relatedUserIds, String reason) {
         try {
-            String sql = "UPDATE user SET relatedUserIds = ? where id = ?";
+            String sql = "UPDATE user SET relatedUserIds = ? , reason = ?where id = ?";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
             statement.setString(1, relatedUserIds);
-            statement.setInt(2, firstUserId);
+            statement.setString(2, reason);
+            statement.setInt(3, firstUserId);
 
             statement.executeUpdate();
             statement.close();
@@ -550,6 +551,15 @@ public class DatabaseHelperMethods {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void commitTransaction() {
+        try {
+            connection.commit();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public int getLastInsertedIdFor(TableName tableName) {

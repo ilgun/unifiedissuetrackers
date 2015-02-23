@@ -62,6 +62,7 @@ public class TwitterCrawler {
 
                     helperMethods.saveSocialMediaEntry(socialMediaRepositoryId, senderUserId, originalEntryId, text,
                             inResponseTo, null, subject, createdDate.toString(), null, null, null, location);
+                    helperMethods.commitTransaction();
                     logCount();
                 }
                 if (result.getRateLimitStatus().getRemaining() < 2) {

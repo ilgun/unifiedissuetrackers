@@ -31,7 +31,6 @@ import static org.jsoup.Jsoup.parse;
 
 public class GzippedMailArchiveCrawler {
     private static final Logger LOGGER = getLogger(GzippedMailArchiveCrawler.class);
-    private static final String CHARSET = "UTF-8";
 
     private final AtomicInteger emailFilesCount = new AtomicInteger(1);
     private final Connection connection;
@@ -60,22 +59,6 @@ public class GzippedMailArchiveCrawler {
                 EMAIL);
 
         crawler.run();
-    }
-
-    private boolean isGZipped(InputStream in) {
-        if (!in.markSupported()) {
-            in = new BufferedInputStream(in);
-        }
-        in.mark(2);
-        int magic = 0;
-        try {
-            magic = in.read() & 0xff | ((in.read() << 8) & 0xff00);
-            in.reset();
-        } catch (IOException e) {
-            e.printStackTrace(System.err);
-            return false;
-        }
-        return magic == GZIPInputStream.GZIP_MAGIC;
     }
 
     public void run() throws InterruptedException {

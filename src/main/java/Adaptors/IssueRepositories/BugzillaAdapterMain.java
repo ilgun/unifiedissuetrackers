@@ -44,6 +44,7 @@ import static org.jsoup.Jsoup.parse;
 
 public class BugzillaAdapterMain {
     private static final Logger LOGGER = getLogger(BugzillaAdapterMain.class);
+
     private final AtomicInteger totalCount = new AtomicInteger();
     private final Client client;
     private final Connection connection;
@@ -67,7 +68,7 @@ public class BugzillaAdapterMain {
     }
 
     public static void main(String[] args) throws IOException, SQLException {
-        BugzillaAdapterMain main = new BugzillaAdapterMain(
+        BugzillaAdapterMain bugzillaIngestor = new BugzillaAdapterMain(
                 new Client(),
                 getDatabaseConnection(),
                 new BugzillaHttpSession(),
@@ -76,7 +77,7 @@ public class BugzillaAdapterMain {
                 "https://bugzilla.redhat.com",
                 "BUGZILLA");
 
-        main.run();
+        bugzillaIngestor.run();
     }
 
     public void run() throws IOException, SQLException {
@@ -96,6 +97,7 @@ public class BugzillaAdapterMain {
 
         for (Integer id : ids) {
             doForAnIssue(id);
+            helperMethods.commitTransaction();
             logCount();
         }
         LOGGER.info("Finished");
@@ -128,11 +130,8 @@ public class BugzillaAdapterMain {
         int reporterUserId = getReporterId(issue.getReporter());
         int priorityId = getPriorityId(issue.getPriority());
 
-        DateTime dueDate = null;
-        Hours currentEstimate = null;
-        Hours originalEstimate = null;
-        int databaseIssueId = saveIssue(issueId, issueType, summary, reporterUserId, createdDate, description, priorityId, status, projectName, components, dueDate, assigneeUserId, currentEstimate,
-                issueAddress, release, resolutionStatus, originalEstimate);
+        int databaseIssueId = saveIssue(issueId, issueType, summary, reporterUserId, createdDate, description, priorityId, status, projectName, components, null, assigneeUserId, null,
+                issueAddress, release, resolutionStatus, null);
 
         if (databaseIssueId == 0) return;
         saveIssueLinks(links, databaseIssueId);

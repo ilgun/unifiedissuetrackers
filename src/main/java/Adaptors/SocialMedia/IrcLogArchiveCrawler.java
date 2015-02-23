@@ -39,11 +39,11 @@ public class IrcLogArchiveCrawler {
 
 
     public void run() {
-        DatabaseHelperMethods helpers = new DatabaseHelperMethods(getDatabaseConnection());
-        int projectId = helpers.getOrCreateProject(projectName, projectUrl);
-        int socialMediaRepositoryId = helpers.getOrCreateSocialMediaRepository(projectId, repositoryUrl, channelType);
+        DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(getDatabaseConnection());
+        int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
+        int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId, repositoryUrl, channelType);
 
-        IrcLogLineParser parser = new IrcLogLineParser(helpers, socialMediaRepositoryId);
+        IrcLogLineParser parser = new IrcLogLineParser(helperMethods, socialMediaRepositoryId);
 
         TreeSet<String> logUrls = getLogUrls();
         Set<String> fileUrls = getAllFileUrls(logUrls);
@@ -53,6 +53,7 @@ public class IrcLogArchiveCrawler {
             Elements tableItems = doc.select("tr");
             for (Element tableItem : tableItems) {
                 parser.parseAndSave(tableItem);
+                helperMethods.commitTransaction();
                 int i = lineCount.incrementAndGet();
                 if ((i % 10000) == 0) LOGGER.info("Count is: " + i);
             }
