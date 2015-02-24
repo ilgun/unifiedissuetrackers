@@ -26,7 +26,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static Model.IssueTrackers.CommentBuilder.aComment;
 import static Model.IssueTrackers.CustomFieldBuilder.aCustomField;
 import static Model.IssueTrackers.IssueLinkBuilder.anIssueLink;
@@ -39,9 +38,9 @@ import static org.apache.commons.lang3.StringUtils.join;
 import static org.apache.log4j.Logger.getLogger;
 import static org.joda.time.DateTime.parse;
 
-public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNode> {
+public class JiraIngestion implements IssueRepositoryConsumer<JsonNode, JsonNode> {
 
-    private static final Logger LOGGER = getLogger(JiraAdapterMain.class);
+    private static final Logger LOGGER = getLogger(JiraIngestion.class);
     private final Client client;
     private final Connection connection;
     private final String repositoryUrl;
@@ -52,34 +51,13 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     private int issueRepositoryId;
     private DatabaseHelperMethods helperMethods;
 
-    public JiraAdapterMain(Client client, Connection connection, String projectName, String projectUrl, String repositoryUrl, String repositoryType) {
+    public JiraIngestion(Client client, Connection connection, String projectName, String projectUrl, String repositoryUrl, String repositoryType) {
         this.client = client;
         this.connection = connection;
         this.projectName = projectName;
         this.projectUrl = projectUrl;
         this.repositoryUrl = repositoryUrl;
         this.repositoryType = repositoryType;
-    }
-
-    public static void main(String[] args) throws IOException {
-        JiraAdapterMain hiveIngestion = new JiraAdapterMain(
-                new Client(),
-                getDatabaseConnection(),
-                "HIVE",
-                "https://hive.apache.org",
-                "https://issues.apache.org/jira",
-                "JIRA");
-
-        JiraAdapterMain hibernateIngestion = new JiraAdapterMain(
-                new Client(),
-                getDatabaseConnection(),
-                "HIBERNATE",
-                "http://hibernate.org",
-                "https://hibernate.atlassian.net",
-                "JIRA");
-
-        hiveIngestion.run();
-        hibernateIngestion.run();
     }
 
     public void run() throws IOException {
@@ -107,6 +85,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             startPoint = startPoint + 100;
             LOGGER.info(startPoint);
         }
+        helperMethods.commitTransaction();
         LOGGER.info("Finished");
     }
 
@@ -229,6 +208,8 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
         }
         String id = priority.get("id").asText();
         String priorityName = priority.get("name").asText();
+        int existingId = doesPriorityExists(priorityName);
+        if (existingId != 0) return existingId;
         String description = getPriorityDescription(id);
         return helperMethods.createOrGetPriorityId(priorityName, description, issueRepositoryId);
     }
@@ -256,7 +237,8 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     @Override
     public int getReporterId(JsonNode fields) {
         JsonNode reporterNode = fields.get("reporter");
-        if(reporterNode == null || reporterNode.isNull()) return helperMethods.getOrCreateIssueRepositoryUser("UserNotFound!?!", "UserNotFound!?!", issueRepositoryId);
+        if (reporterNode == null || reporterNode.isNull())
+            return helperMethods.getOrCreateIssueRepositoryUser("UserNotFound!?!", "UserNotFound!?!", issueRepositoryId);
         String reporterName = reporterNode.get("name").asText();
         String reporterEmail;
         if (reporterNode.get("emailAddress") != null) {
@@ -482,7 +464,7 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
     private List<IssueLink> getIssueLinks(JsonNode fields) {
         List<IssueLink> links = newArrayList();
         JsonNode issueLinks = fields.get("issuelinks");
-        if (!issueLinks.isNull() && issueLinks.size() >0) {
+        if (!issueLinks.isNull() && issueLinks.size() > 0) {
             for (int i = 0; i < issueLinks.size(); i++) {
                 JsonNode outwardIssue = issueLinks.get(i).get("outwardIssue");
                 JsonNode inwardIssue = issueLinks.get(i).get("inwardIssue");
@@ -508,5 +490,17 @@ public class JiraAdapterMain implements IssueRepositoryConsumer<JsonNode, JsonNo
             }
         }
         return links;
+    }
+
+    private int doesPriorityExists(String priorityName) {
+        Map<String, TableColumnName> priorityNameMap = newHashMap();
+        priorityNameMap.put(priorityName, TableColumnName.priorityName);
+
+        Map<Integer, TableColumnName> issueRepositoryIdMap = newHashMap();
+        issueRepositoryIdMap.put(issueRepositoryId, TableColumnName.issueRepositoryId);
+
+        int returnId = helperMethods.checkIfExits("priorities", priorityNameMap, issueRepositoryIdMap);
+        if (returnId != 0) return returnId;
+        return 0;
     }
 }

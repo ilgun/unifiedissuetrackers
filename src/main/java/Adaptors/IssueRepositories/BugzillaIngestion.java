@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static java.lang.ClassLoader.getSystemClassLoader;
@@ -42,8 +41,8 @@ import static org.apache.commons.lang3.StringUtils.join;
 import static org.apache.log4j.Logger.getLogger;
 import static org.jsoup.Jsoup.parse;
 
-public class BugzillaAdapterMain {
-    private static final Logger LOGGER = getLogger(BugzillaAdapterMain.class);
+public class BugzillaIngestion {
+    private static final Logger LOGGER = getLogger(BugzillaIngestion.class);
 
     private final AtomicInteger totalCount = new AtomicInteger();
     private final Client client;
@@ -57,7 +56,7 @@ public class BugzillaAdapterMain {
     private int issueRepositoryId;
     private DatabaseHelperMethods helperMethods;
 
-    public BugzillaAdapterMain(Client client, Connection connection, BugzillaHttpSession session, String projectName, String projectUrl, String repositoryUrl, String repositoryType) {
+    public BugzillaIngestion(Client client, Connection connection, BugzillaHttpSession session, String projectName, String projectUrl, String repositoryUrl, String repositoryType) {
         this.client = client;
         this.connection = connection;
         this.session = session;
@@ -65,19 +64,6 @@ public class BugzillaAdapterMain {
         this.projectUrl = projectUrl;
         this.repositoryUrl = repositoryUrl;
         this.repositoryType = repositoryType;
-    }
-
-    public static void main(String[] args) throws IOException, SQLException {
-        BugzillaAdapterMain bugzillaIngestor = new BugzillaAdapterMain(
-                new Client(),
-                getDatabaseConnection(),
-                new BugzillaHttpSession(),
-                "PULP",
-                "http://www.pulpproject.org",
-                "https://bugzilla.redhat.com",
-                "BUGZILLA");
-
-        bugzillaIngestor.run();
     }
 
     public void run() throws IOException, SQLException {
@@ -100,6 +86,7 @@ public class BugzillaAdapterMain {
             helperMethods.commitTransaction();
             logCount();
         }
+        helperMethods.commitTransaction();
         LOGGER.info("Finished");
     }
 
