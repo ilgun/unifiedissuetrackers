@@ -65,8 +65,14 @@ public class JiraIngestion implements IssueRepositoryConsumer<JsonNode, JsonNode
         int maxNumber = 1;
 
         while (startPoint < maxNumber) {
-            WebResource resource = client.resource(repositoryUrl + "/rest/api/latest/search?jql=project=hive&startAt=" + startPoint +
-                    "&maxResults=100&expand=names,changelog");
+            WebResource resource;
+            if (projectName.equals("HIVE")) {
+                resource = client.resource(repositoryUrl + "/rest/api/latest/search?jql=project=hive&startAt=" + startPoint +
+                        "&maxResults=100&expand=names,changelog");
+            } else {
+                resource = client.resource(repositoryUrl + "/rest/api/latest/search?jql&startAt=" + startPoint +
+                        "&maxResults=100&expand=names,changelog");
+            }
             ClientResponse response = resource.accept("application/json").get(ClientResponse.class);
             String output = response.getEntity(String.class);
 
@@ -85,6 +91,7 @@ public class JiraIngestion implements IssueRepositoryConsumer<JsonNode, JsonNode
             startPoint = startPoint + 100;
             LOGGER.info(startPoint);
         }
+
         helperMethods.commitTransaction();
         LOGGER.info("Finished");
     }
@@ -170,7 +177,6 @@ public class JiraIngestion implements IssueRepositoryConsumer<JsonNode, JsonNode
             } else if (authorNode.get("emailAddress") == null) {
                 authorName = authorNode.get("name").asText();
                 authorEmail = authorNode.get("displayName").asText();
-                ;
             }
             String date = null;
             if (history.get("created") != null) {
@@ -262,7 +268,7 @@ public class JiraIngestion implements IssueRepositoryConsumer<JsonNode, JsonNode
         stringMap.put(issueAddress, TableColumnName.issueAddress);
 
         int foundIssueId = helperMethods.checkIfExits("issues", stringMap, intMap);
-        if (foundIssueId != 0) return foundIssueId;
+        if (foundIssueId != 0) return 0;
 
         int newIssueId = 0;
         try {

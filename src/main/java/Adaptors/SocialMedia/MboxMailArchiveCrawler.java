@@ -15,12 +15,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.sql.Connection;
-import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static Model.SocialMedia.SocialMediaChannel.EMAIL;
-import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.collect.Sets.newTreeSet;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.log4j.Logger.getLogger;
 import static org.jsoup.Jsoup.parse;
@@ -64,7 +64,7 @@ public class MboxMailArchiveCrawler {
         Document doc = parse(output);
         Elements elements = doc.getElementsByTag("a");
 
-        Set<String> mboxUrls = newHashSet();
+        SortedSet<String> mboxUrls = newTreeSet();
         for (Element anElement : elements) {
             String mboxUrl = anElement.attributes().get("href");
             if (mboxUrl.startsWith("20")) {
@@ -81,6 +81,7 @@ public class MboxMailArchiveCrawler {
             String emailsInMbox = doForeachMboxFile(0, 5, mboxLink);
             if (emailsInMbox == null) continue;
             parser.parseAndSaveEmails(emailsInMbox);
+            LOGGER.info("Finished parsing file: " + mboxLink);
             logCount();
         }
         LOGGER.info("Process Finished");

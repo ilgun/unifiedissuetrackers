@@ -145,13 +145,8 @@ public class DatabaseHelperMethods {
     }
 
     public void createUserRelationship(String firstUserName, String secondUserName, String reason) {
-        Map<String, TableColumnName> firstUser = newHashMap();
-        firstUser.put(firstUserName, TableColumnName.name);
-        int firstUserId = checkIfExits("user", firstUser);
-
-        Map<String, TableColumnName> secondUser = newHashMap();
-        secondUser.put(secondUserName, TableColumnName.name);
-        int secondUserId = checkIfExits("user", secondUser);
+        int firstUserId = getUser(firstUserName);
+        int secondUserId = getUser(secondUserName);
 
         Set<String> firstRelatedUserIds = getRelatedUserIdsFor(firstUserId);
         Set<String> secondRelatedUserIds = getRelatedUserIdsFor(secondUserId);
@@ -200,10 +195,7 @@ public class DatabaseHelperMethods {
     private int getOrCreateUser(String authorName) {
         int userId = 0;
 
-        Map<String, TableColumnName> values = newHashMap();
-        values.put(authorName, TableColumnName.name);
-
-        int user = checkIfExits("user", values);
+        int user = getUser(authorName);
         if (user != 0) return user;
 
         try {
@@ -223,6 +215,13 @@ public class DatabaseHelperMethods {
             throw new RuntimeException("Username was: " + authorName, e);
         }
         return userId;
+    }
+
+    public int getUser(String authorName) {
+        Map<String, TableColumnName> values = newHashMap();
+        values.put(authorName, TableColumnName.name);
+
+        return checkIfExits("user", values);
     }
 
     public void saveHistory(int issueId, String from, String to, String field, int userId, String date) {
@@ -410,29 +409,27 @@ public class DatabaseHelperMethods {
         }
     }
 
-    public int getOrCreateSocialMediaUser(int socialMediaRepositoryId, String authorName, String authorEmail) {
+    public int getOrCreateSocialMediaUser(int userId, int socialMediaRepositoryId, String authorName, String authorEmail) {
         String trimmedUserName = authorName.trim();
         int socialMediaUserId = 0;
 
-        Map<Integer, TableColumnName> socialMediaRepositoryIdMap = newHashMap();
-        socialMediaRepositoryIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
-
-        Map<String, TableColumnName> userMap = newHashMap();
-        userMap.put(trimmedUserName, TableColumnName.userName);
-        userMap.put(authorEmail, TableColumnName.userEmail);
-
-        int user = checkIfExits("socialmediauser", userMap, socialMediaRepositoryIdMap);
+        int user = getSocialMediaUser(socialMediaRepositoryId, authorEmail, trimmedUserName);
         if (user != 0) return user;
 
         try {
-            int userId = getOrCreateUser(trimmedUserName);
+            int userIdToBeInserted;
+            if (userId != 0) {
+                userIdToBeInserted = userId;
+            } else {
+                userIdToBeInserted = getOrCreateUser(trimmedUserName);
+            }
             String sql = "INSERT INTO socialmediauser (`userId`,\n" +
                     "`socialMediaRepositoryId`,\n" +
                     "`userName`,\n" +
                     "`userEmail`)" +
                     "VALUES (?, ?, ?, ?)";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
-            statement.setInt(1, userId);
+            statement.setInt(1, userIdToBeInserted);
             statement.setInt(2, socialMediaRepositoryId);
             statement.setString(3, trimmedUserName);
             statement.setString(4, authorEmail);
@@ -451,10 +448,26 @@ public class DatabaseHelperMethods {
         return socialMediaUserId;
     }
 
+    public int getOrCreateSocialMediaUser(int socialMediaRepositoryId, String authorName, String authorEmail) {
+        return getOrCreateSocialMediaUser(0, socialMediaRepositoryId, authorName, authorEmail);
+    }
+
+    public int getSocialMediaUser(int socialMediaRepositoryId, String authorEmail, String username) {
+        String trimmedUserName = username.trim();
+        Map<Integer, TableColumnName> socialMediaRepositoryIdMap = newHashMap();
+        socialMediaRepositoryIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
+
+        Map<String, TableColumnName> userMap = newHashMap();
+        userMap.put(trimmedUserName, TableColumnName.userName);
+        userMap.put(authorEmail, TableColumnName.userEmail);
+
+        return checkIfExits("socialmediauser", userMap, socialMediaRepositoryIdMap);
+    }
+
     public void saveSocialMediaEntry(int socialMediaRepositoryId, int senderUserId, String originalEntryId, String context, String inResponseTo,
                                      String receiver, String subject, String sentDate, Object receivedDate, Object seenDate, Object attachments, String location) {
 
-        /*Map<Integer, TableColumnName> socialMediaRepositoryIdMap = newHashMap();
+        Map<Integer, TableColumnName> socialMediaRepositoryIdMap = newHashMap();
         socialMediaRepositoryIdMap.put(socialMediaRepositoryId, TableColumnName.socialMediaRepositoryId);
 
         Map<String, TableColumnName> valuesMap = newHashMap();
@@ -462,7 +475,7 @@ public class DatabaseHelperMethods {
         valuesMap.put(context, TableColumnName.context);
 
         int entryId = checkIfExits("socialmediaentries", valuesMap, socialMediaRepositoryIdMap);
-        if (entryId != 0) return;*/
+        if (entryId != 0) return;
         try {
             String sql = "INSERT INTO socialmediaentries (`socialMediaRepositoryId`,\n" +
                     "`senderUserId`,\n" +

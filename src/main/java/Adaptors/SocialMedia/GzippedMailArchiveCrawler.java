@@ -15,13 +15,13 @@ import org.jsoup.select.Elements;
 
 import java.io.*;
 import java.sql.Connection;
-import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
 import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static Model.SocialMedia.SocialMediaChannel.EMAIL;
-import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.collect.Sets.newTreeSet;
 import static java.lang.Thread.sleep;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.commons.io.IOUtils.closeQuietly;
@@ -69,7 +69,7 @@ public class GzippedMailArchiveCrawler {
         Document doc = parse(output);
         Elements elements = doc.getElementsByTag("a");
 
-        Set<String> urls = newHashSet();
+        SortedSet<String> urls = newTreeSet();
         for (Element anElement : elements) {
             String url = anElement.attributes().get("href");
             if (url.contains(".txt")) {

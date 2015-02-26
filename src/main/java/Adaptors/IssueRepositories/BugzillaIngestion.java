@@ -311,7 +311,7 @@ public class BugzillaIngestion {
         List<Integer> ids = newArrayList();
         String line = "";
 
-        File csvFile = new File(getFilePath("bugs-2015-01-15.csv"));
+        File csvFile = new File(getFilePath("bugs-2015-02-24.csv"));
         BufferedReader br = new BufferedReader(new FileReader(csvFile));
         //For the first line
         br.readLine();
