@@ -50,7 +50,7 @@ public class EmailParser {
 
     public void parseAndSaveEmails(String emailsInServer) throws IOException {
         int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
-        int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId,repositoryUrl, channelType);
+        int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId, repositoryUrl, channelType);
 
         DefaultMessageBuilder messageBuilder = getMessageBuilder();
         List<String> emails = newArrayList(on("From ").split(emailsInServer));
@@ -69,7 +69,7 @@ public class EmailParser {
                     String subject = message.getSubject();
                     String context = getBody(message);
 
-                    int userId = helperMethods.getOrCreateSocialMediaUser(projectId, join(fromName, ","), join(fromEmail, ","));
+                    int userId = helperMethods.getOrCreateSocialMediaUser(socialMediaRepositoryId, join(fromName, ","), join(fromEmail, ","));
                     helperMethods.saveSocialMediaEntry(socialMediaRepositoryId, userId, messageId, context, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
                     logCount();
                 } else if (message.getHeader().getField("from") != null) {
