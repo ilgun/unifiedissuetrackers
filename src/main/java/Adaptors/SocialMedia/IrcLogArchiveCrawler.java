@@ -11,11 +11,11 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.sql.Connection;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static com.google.common.collect.Sets.newTreeSet;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.log4j.Logger.getLogger;
@@ -24,14 +24,16 @@ import static org.jsoup.Jsoup.parse;
 public class IrcLogArchiveCrawler {
     private static Logger LOGGER = getLogger(IrcLogArchiveCrawler.class);
     private final Client client;
+    private final Connection connection;
     private final String projectName;
     private final String projectUrl;
     private final String repositoryUrl;
     private final SocialMediaChannel channelType;
     private AtomicInteger lineCount = new AtomicInteger(1);
 
-    public IrcLogArchiveCrawler(Client client, String projectName, String projectUrl, String repositoryUrl, SocialMediaChannel channelType) {
+    public IrcLogArchiveCrawler(Client client, Connection connection, String projectName, String projectUrl, String repositoryUrl, SocialMediaChannel channelType) {
         this.client = client;
+        this.connection = connection;
         this.projectName = projectName;
         this.projectUrl = projectUrl;
         this.repositoryUrl = repositoryUrl;
@@ -40,7 +42,7 @@ public class IrcLogArchiveCrawler {
 
 
     public void run() {
-        DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(getDatabaseConnection());
+        DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(connection);
         int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
         int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId, repositoryUrl, channelType);
         UserRelationshipManager userRelationshipManager = new UserRelationshipManager(socialMediaRepositoryId, helperMethods);

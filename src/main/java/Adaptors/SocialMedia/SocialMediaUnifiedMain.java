@@ -17,15 +17,6 @@ public class SocialMediaUnifiedMain {
         Client jerseyClient = getJerseyClient();
         Connection databaseConnection = getDatabaseConnection();
 
-        GzippedMailArchiveCrawler hibernateEmailCrawler = new GzippedMailArchiveCrawler(
-                jerseyClient,
-                databaseConnection,
-                "HIBERNATE",
-                "http://hibernate.org",
-                "http://lists.jboss.org/pipermail/hibernate-dev/",
-                EMAIL);
-        hibernateEmailCrawler.run();
-
         GzippedMailArchiveCrawler pulpEmailCrawler = new GzippedMailArchiveCrawler(
                 jerseyClient,
                 databaseConnection,
@@ -34,6 +25,15 @@ public class SocialMediaUnifiedMain {
                 "https://www.redhat.com/archives/pulp-list/",
                 EMAIL);
         pulpEmailCrawler.run();
+
+        GzippedMailArchiveCrawler hibernateEmailCrawler = new GzippedMailArchiveCrawler(
+                jerseyClient,
+                databaseConnection,
+                "HIBERNATE",
+                "http://hibernate.org",
+                "http://lists.jboss.org/pipermail/hibernate-dev/",
+                EMAIL);
+        hibernateEmailCrawler.run();
 
         MboxMailArchiveCrawler hiveMailCrawler = new MboxMailArchiveCrawler(
                 jerseyClient,
@@ -45,7 +45,8 @@ public class SocialMediaUnifiedMain {
         hiveMailCrawler.run();
 
         IrcLogArchiveCrawler hibernateIrcCrawler = new IrcLogArchiveCrawler(
-               jerseyClient,
+                jerseyClient,
+                databaseConnection,
                 "HIBERNATE",
                 "http://hibernate.org",
                 "http://transcripts.jboss.org/channel/irc.freenode.org/%23hibernate-dev/",

@@ -164,13 +164,15 @@ public class GzippedMailArchiveCrawler {
     }
 
     private String readFileToString(BufferedReader bufferedReader) throws IOException {
-        StringWriter writer = new StringWriter();
+        StringBuffer sb = new StringBuffer();
 
-        char[] buffer = new char[10240];
-        for (int length; (length = bufferedReader.read(buffer)) > 0; ) {
-            writer.write(buffer, 0, length);
+        int BUFFER_SIZE = 1;
+        char[] buffer = new char[BUFFER_SIZE];
+        int charsRead = 0;
+        while ((charsRead = bufferedReader.read(buffer, 0, BUFFER_SIZE)) != -1) {
+            sb.append(buffer, 0, charsRead);
         }
-        return writer.toString();
+        return sb.toString();
     }
 
     private InputStream getInputStreamForUrl(String fileUrl) throws IOException {
