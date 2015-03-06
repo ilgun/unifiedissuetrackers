@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static Model.SocialMedia.SocialMediaChannel.EMAIL;
 import static com.google.common.collect.Sets.newTreeSet;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static org.apache.log4j.Logger.getLogger;
 import static org.jsoup.Jsoup.parse;
@@ -56,21 +57,8 @@ public class MboxMailArchiveCrawler {
         crawler.run();
     }
 
-    public void run() throws IOException {
-        WebResource resource = client.resource(repositoryUrl);
-        ClientResponse response = resource.accept(TEXT_HTML).get(ClientResponse.class);
-        String output = response.getEntity(String.class);
-
-        Document doc = parse(output);
-        Elements elements = doc.getElementsByTag("a");
-
-        SortedSet<String> mboxUrls = newTreeSet();
-        for (Element anElement : elements) {
-            String mboxUrl = anElement.attributes().get("href");
-            if (mboxUrl.startsWith("20")) {
-                mboxUrls.add(mboxUrl.split("/")[0]);
-            }
-        }
+    public void run() throws IOException, InterruptedException {
+        SortedSet<String> mboxUrls = getArchiveUrls();
 
         DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(connection);
         EmailParser parser = new EmailParser(helperMethods, projectName, projectUrl, repositoryUrl, channelType);
@@ -78,7 +66,7 @@ public class MboxMailArchiveCrawler {
         LOGGER.info("Total Email Files: " + mboxUrls.size());
 
         for (String mboxLink : mboxUrls) {
-            String emailsInMbox = doForeachMboxFile(0, 5, mboxLink);
+            String emailsInMbox = doForeachMboxFile(0, 20, mboxLink);
             if (emailsInMbox == null) continue;
             parser.parseAndSaveEmails(emailsInMbox);
             LOGGER.info("Finished parsing file: " + mboxLink);
@@ -87,16 +75,45 @@ public class MboxMailArchiveCrawler {
         LOGGER.info("Process Finished");
     }
 
-    private String doForeachMboxFile(int i, int limit, String mboxLink) {
+    private SortedSet<String> getArchiveUrls() {
+        SortedSet<String> mboxUrls = newTreeSet();
+        return getArchiveUrlsFor(0, 2000, mboxUrls);
+    }
+
+    private SortedSet<String> getArchiveUrlsFor(int i, int limit, SortedSet<String> mboxUrls) {
+        Elements elements = getElements();
+        for (Element anElement : elements) {
+            String mboxUrl = anElement.attributes().get("href");
+            if (mboxUrl.startsWith("20")) {
+                mboxUrls.add(mboxUrl.split("/")[0]);
+            }
+        }
+        if (i < limit) {
+            return getArchiveUrlsFor(++i, 2000, mboxUrls);
+        }
+        return mboxUrls;
+    }
+
+    private Elements getElements() {
+        WebResource resource = client.resource(repositoryUrl);
+        ClientResponse response = resource.accept(TEXT_HTML).get(ClientResponse.class);
+        String output = response.getEntity(String.class);
+
+        Document doc = parse(output);
+        return doc.getElementsByTag("a");
+    }
+
+    private String doForeachMboxFile(int i, int limit, String mboxLink) throws InterruptedException {
         String mboxUrl = repositoryUrl + mboxLink;
-        String emailsInMbox = null;
+        String emailsInMbox;
         try (InputStream is = new URL(mboxUrl).openStream()) {
             emailsInMbox = IOUtils.toString(is, "UTF-8");
         } catch (IOException e) {
             if (i >= limit) {
                 e.printStackTrace();
             }
-            doForeachMboxFile(++i, limit, mboxLink);
+            MINUTES.sleep(1);
+            return doForeachMboxFile(++i, limit, mboxLink);
         }
         return emailsInMbox;
     }

@@ -25,7 +25,6 @@ public class IssueRepositoryUnifiedMain {
                 "BUGZILLA");
         bugzillaIngestor.run();
 
-
         JiraIngestion hiveIngestion = new JiraIngestion(
                 jerseyClient,
                 databaseConnection,

@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.collect.Sets.newHashSet;
-import static java.lang.System.exit;
 import static java.lang.Thread.sleep;
 import static org.apache.commons.lang3.StringUtils.join;
 import static org.apache.log4j.Logger.getLogger;
@@ -69,11 +68,10 @@ public class TwitterCrawler {
                     sleep(result.getRateLimitStatus().getSecondsUntilReset() * 1000);
                 }
             } while ((query = result.nextQuery()) != null);
-            LOGGER.info("Finished Crawling Tweets");
-            exit(0);
         } catch (TwitterException | InterruptedException e) {
             throw new RuntimeException(e);
         }
+        LOGGER.info("Finished Crawling Tweets");
     }
 
     private Set<String> getHashtags(Status tweet) {

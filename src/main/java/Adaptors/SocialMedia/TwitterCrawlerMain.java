@@ -7,14 +7,14 @@ import twitter4j.Twitter;
 import twitter4j.TwitterFactory;
 import twitter4j.conf.ConfigurationBuilder;
 
-import java.io.IOException;
-
 import static DatabaseConnectors.IssueTrackerConnector.getDatabaseConnection;
 import static Model.SocialMedia.SocialMediaChannel.TWITTER;
 
 public class TwitterCrawlerMain {
-    public static void main(String[] args) throws ConfigurationException, IOException {
+    public TwitterCrawlerMain() {
+    }
 
+    public static void runTwitterCrawlerForHiveAndHibernate() throws ConfigurationException {
         PropertiesConfiguration configuration = new PropertiesConfiguration("configuration/dev/twitter.properties");
         String consumerKey = configuration.getString("consumer.key");
         String consumerSecret = configuration.getString("consumer.secret");

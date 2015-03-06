@@ -1,5 +1,7 @@
 package Adaptors.HelperMethods;
 
+import java.util.Set;
+
 public class UserRelationshipManager {
     private static final int FALSE = 0;
 
@@ -12,24 +14,31 @@ public class UserRelationshipManager {
     }
 
     public void createRelationshipsForNicknameChange(String oldNickname, String newNickname) {
-        int isUserExists = helperMethods.getSocialMediaUser(socialMediaRepositoryId, newNickname, newNickname);
+        int isSocialMediaUserExists = helperMethods.getSocialMediaUser(socialMediaRepositoryId, newNickname, newNickname);
 
-        if (isUserExists == FALSE) {
+        if (isSocialMediaUserExists == FALSE) {
             int oldNickUserId = helperMethods.getUser(oldNickname);
-            int socialMediaUserId = helperMethods.getOrCreateSocialMediaUser(oldNickUserId, socialMediaRepositoryId, newNickname, newNickname);
+            helperMethods.getOrCreateSocialMediaUser(oldNickUserId, socialMediaRepositoryId, newNickname, newNickname);
+            int isNewNickHasUser = helperMethods.getUser(newNickname);
+            if (isNewNickHasUser != FALSE) {
+                helperMethods.createUserRelationship(newNickname, oldNickname, "Old nick has similar user with the new nick.");
+            }
         } else {
             int oldUserId = helperMethods.getUser(oldNickname);
             int newUserId = helperMethods.getUser(newNickname);
             if (oldUserId == newUserId) {
-                //store the new something that i cannot read
+                // Do nothing because users are exact same!
             } else {
-                if ("are the users related".equals(true)) {
-
+                Set<Integer> relatedUserIds = helperMethods.getAllRelatedUserIdsFor(newUserId);
+                if (relatedUserIds.contains(oldUserId)) {
+                    //Do nothing because users are already related!
                 } else {
-                    int oldNickUserId = helperMethods.getUser(oldNickname);
-                    helperMethods.getOrCreateSocialMediaUser(oldNickUserId, socialMediaRepositoryId, newNickname, newNickname);
-                    helperMethods.createUserRelationship(oldNickname, newNickname, "reason");
-
+                    helperMethods.getOrCreateSocialMediaUser(oldUserId, socialMediaRepositoryId, newNickname, newNickname);
+                    if (newUserId < oldUserId) {
+                        helperMethods.createUserRelationship(oldNickname, newNickname, "New nick is already present in the system, possible duplicate.");
+                    } else {
+                        helperMethods.createUserRelationship(newNickname, oldNickname, "New nick is already present in the system, possible duplicate.");
+                    }
                 }
             }
         }

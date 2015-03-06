@@ -1,6 +1,7 @@
 package Adaptors.SocialMedia;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
+import Adaptors.HelperMethods.UserRelationshipManager;
 import Model.SocialMedia.SocialMediaChannel;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -42,8 +43,9 @@ public class IrcLogArchiveCrawler {
         DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(getDatabaseConnection());
         int projectId = helperMethods.getOrCreateProject(projectName, projectUrl);
         int socialMediaRepositoryId = helperMethods.getOrCreateSocialMediaRepository(projectId, repositoryUrl, channelType);
+        UserRelationshipManager userRelationshipManager = new UserRelationshipManager(socialMediaRepositoryId, helperMethods);
 
-        IrcLogLineParser parser = new IrcLogLineParser(helperMethods, socialMediaRepositoryId);
+        IrcLogLineParser parser = new IrcLogLineParser(helperMethods, socialMediaRepositoryId, userRelationshipManager);
 
         TreeSet<String> logUrls = getLogUrls();
         Set<String> fileUrls = getAllFileUrls(logUrls);

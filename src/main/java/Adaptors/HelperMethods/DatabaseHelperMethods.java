@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.join;
@@ -61,7 +60,7 @@ public class DatabaseHelperMethods {
             int entryCount = 2;
             for (Entry<String, TableColumnName> stringEntry : stringFields.entrySet()) {
                 preparedStatement.setString(entryCount, stringEntry.getKey());
-                entryCount++;
+                ++entryCount;
             }
 
             rs = preparedStatement.executeQuery();
@@ -144,27 +143,20 @@ public class DatabaseHelperMethods {
         return output;
     }
 
-    public void createUserRelationship(String firstUserName, String secondUserName, String reason) {
-        int firstUserId = getUser(firstUserName);
-        int secondUserId = getUser(secondUserName);
+    public void createUserRelationship(String newUsername, String oldUsername, String reason) {
+        int relatedUserId = getUser(newUsername);
+        int baseUserId = getUser(oldUsername);
 
-        Set<String> firstRelatedUserIds = getRelatedUserIdsFor(firstUserId);
-        Set<String> secondRelatedUserIds = getRelatedUserIdsFor(secondUserId);
-
-        String finalRelatedIdsForFirstUser = getFinalRelatedIds(secondUserId, firstRelatedUserIds);
-        String finalRelatedIdsForSecondUser = getFinalRelatedIds(firstUserId, secondRelatedUserIds);
-
-        createRelationshipFor(firstUserId, finalRelatedIdsForFirstUser, reason);
-        createRelationshipFor(secondUserId, finalRelatedIdsForSecondUser, reason);
+        createRelationshipFor(baseUserId, relatedUserId, reason);
     }
 
-    private void createRelationshipFor(int firstUserId, String relatedUserIds, String reason) {
+    private void createRelationshipFor(int userId, int relatedUserIds, String reason) {
         try {
-            String sql = "UPDATE user SET relatedUserIds = ? , reason = ?where id = ?";
+            String sql = "UPDATE user SET relatedUserIds = ? , reason = ? where id = ?";
             PreparedStatement statement = connection.prepareStatement(sql, new String[]{"id"});
-            statement.setString(1, relatedUserIds);
+            statement.setInt(1, userId);
             statement.setString(2, reason);
-            statement.setInt(3, firstUserId);
+            statement.setInt(3, relatedUserIds);
 
             statement.executeUpdate();
             statement.close();
@@ -173,23 +165,31 @@ public class DatabaseHelperMethods {
         }
     }
 
-    private Set<String> getRelatedUserIdsFor(int firstUserId) {
-        String relatedUserIds = null;
+    public Set<Integer> getAllRelatedUserIdsFor(int userId) {
+        Set<Integer> allRelatedUserIds = newHashSet();
+        int relatedUserId = getRelatedUserIdsFor(userId);
+        while (relatedUserId != 0) {
+            allRelatedUserIds.add(relatedUserId);
+            relatedUserId = getRelatedUserIdsFor(relatedUserId);
+        }
+        return allRelatedUserIds;
+    }
+
+    private Integer getRelatedUserIdsFor(int userId) {
+        Integer relatedUserIds = 0;
         try {
-            String relatedUserSql = "SELECT relatedUserIds from user where id = ?";
+            String relatedUserSql = "SELECT id from user where relatedUserIds = ?";
             PreparedStatement preparedStatement = connection.prepareStatement(relatedUserSql);
-            preparedStatement.setInt(1, firstUserId);
+            preparedStatement.setInt(1, userId);
 
             ResultSet rs = preparedStatement.executeQuery();
             while (rs.next()) {
-                relatedUserIds = rs.getString("relatedUserIds");
+                relatedUserIds = rs.getInt("id");
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        if (relatedUserIds == null) return newHashSet();
-
-        return newHashSet(newArrayList(relatedUserIds.trim().split(",")));
+        return relatedUserIds;
     }
 
     private int getOrCreateUser(String authorName) {

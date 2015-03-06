@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 import static com.google.common.base.Splitter.on;
 import static com.google.common.collect.Lists.newArrayList;
+import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.io.IOUtils.toInputStream;
 import static org.apache.commons.lang.StringUtils.isEmpty;
@@ -85,7 +86,7 @@ public class EmailParser {
                     String subject = header.getField("subject").getBody();
                     String sentDate = header.getField("date").getBody();
 
-                    int userId = helperMethods.getOrCreateSocialMediaUser(projectId, fromName, fromEmail);
+                    int userId = helperMethods.getOrCreateSocialMediaUser(socialMediaRepositoryId, fromName, fromEmail);
                     helperMethods.saveSocialMediaEntry(socialMediaRepositoryId, userId, messageId, context, replyTo, to, subject, sentDate, null, null, null, null);
                     logCount();
                 }
@@ -118,7 +119,7 @@ public class EmailParser {
             try {
                 BinaryBody body = (BinaryBody) rawBody;
                 context = IOUtils.toString(body.getInputStream());
-            } catch (Exception ex) {
+            } catch (Exception ignored) {
             }
         }
         return context;
@@ -129,7 +130,7 @@ public class EmailParser {
     }
 
     private String extractNameFrom(String input) {
-        Pattern pattern = Pattern.compile("\\((.*?)\\)");
+        Pattern pattern = compile("\\((.*?)\\)");
         Matcher match = pattern.matcher(input);
         match.find();
         return match.group(1);

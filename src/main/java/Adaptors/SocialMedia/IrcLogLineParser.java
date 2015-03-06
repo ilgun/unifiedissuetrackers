@@ -2,6 +2,7 @@ package Adaptors.SocialMedia;
 
 import Adaptors.HelperMethods.DatabaseHelperMethods;
 import Adaptors.HelperMethods.TableName;
+import Adaptors.HelperMethods.UserRelationshipManager;
 import Model.SocialMedia.SocialMediaEvent;
 import org.jsoup.nodes.Element;
 
@@ -20,10 +21,12 @@ public class IrcLogLineParser {
 
     private final DatabaseHelperMethods helpers;
     private final int socialMediaRepositoryId;
+    private final UserRelationshipManager userRelationshipManager;
 
-    public IrcLogLineParser(DatabaseHelperMethods helpers, int socialMediaRepositoryId) {
+    public IrcLogLineParser(DatabaseHelperMethods helpers, int socialMediaRepositoryId, UserRelationshipManager userRelationshipManager) {
         this.helpers = helpers;
         this.socialMediaRepositoryId = socialMediaRepositoryId;
+        this.userRelationshipManager = userRelationshipManager;
     }
 
     public void parseAndSave(Element tableItem) {
@@ -48,7 +51,7 @@ public class IrcLogLineParser {
                 helpers.getOrCreateSocialMediaUser(socialMediaRepositoryId, newUsername, newUsername);
                 int socialMediaUserId = helpers.getOrCreateSocialMediaUser(socialMediaRepositoryId, oldUsername, oldUsername);
                 helpers.createSocialMediaEvent(socialMediaRepositoryId, socialMediaUserId, parseIrcDate(date), NICKCHANGE, oldUsername + " to " + newUsername);
-                //helpers.createUserRelationship(newUsername, oldUsername);
+                userRelationshipManager.createRelationshipsForNicknameChange(oldUsername, newUsername);
 
                 break;
             }
