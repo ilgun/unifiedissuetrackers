@@ -76,7 +76,7 @@ public class GzippedMailArchiveCrawler {
     public void run() throws InterruptedException {
         SortedSet<String> urls = getArchiveUrls();
         DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(connection);
-        EmailParser parser = new EmailParser(helperMethods, projectName, projectUrl, repositoryUrl, channelType);
+        MailParser parser = new MailParser(helperMethods, projectName, projectUrl, repositoryUrl, channelType);
 
         LOGGER.info("Total Email Files: " + urls.size());
 
@@ -146,7 +146,7 @@ public class GzippedMailArchiveCrawler {
 
             bufferedReader = new BufferedReader(new InputStreamReader(is));
             emails = readFileToString(bufferedReader);
-        } catch (IOException e) {
+        } catch (Exception e) {
             if (i >= limit) {
                 LOGGER.error("Error occurred while parsing file: " + fileUrl);
                 e.printStackTrace();
@@ -164,13 +164,15 @@ public class GzippedMailArchiveCrawler {
     }
 
     private String readFileToString(BufferedReader bufferedReader) throws IOException {
-        StringBuffer sb = new StringBuffer();
-
-        int BUFFER_SIZE = 1;
-        char[] buffer = new char[BUFFER_SIZE];
-        int charsRead = 0;
-        while ((charsRead = bufferedReader.read(buffer, 0, BUFFER_SIZE)) != -1) {
-            sb.append(buffer, 0, charsRead);
+        StringBuilder sb = new StringBuilder();
+        try {
+            int BUFFER_SIZE = 1;
+            char[] buffer = new char[BUFFER_SIZE];
+            int charsRead = 0;
+            while ((charsRead = bufferedReader.read(buffer, 0, BUFFER_SIZE)) != -1) {
+                sb.append(buffer, 0, charsRead);
+            }
+        } catch (Exception ignored) {
         }
         return sb.toString();
     }

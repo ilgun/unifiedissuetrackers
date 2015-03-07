@@ -61,7 +61,7 @@ public class MboxMailArchiveCrawler {
         SortedSet<String> mboxUrls = getArchiveUrls();
 
         DatabaseHelperMethods helperMethods = new DatabaseHelperMethods(connection);
-        EmailParser parser = new EmailParser(helperMethods, projectName, projectUrl, repositoryUrl, channelType);
+        MailParser parser = new MailParser(helperMethods, projectName, projectUrl, repositoryUrl, channelType);
 
         LOGGER.info("Total Email Files: " + mboxUrls.size());
 

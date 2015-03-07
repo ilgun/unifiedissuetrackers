@@ -9,10 +9,7 @@ import org.apache.james.mime4j.dom.address.AddressList;
 import org.apache.james.mime4j.dom.address.Mailbox;
 import org.apache.james.mime4j.dom.address.MailboxList;
 import org.apache.james.mime4j.field.LenientFieldParser;
-import org.apache.james.mime4j.message.BasicBodyFactory;
-import org.apache.james.mime4j.message.BodyFactory;
-import org.apache.james.mime4j.message.DefaultBodyDescriptorBuilder;
-import org.apache.james.mime4j.message.DefaultMessageBuilder;
+import org.apache.james.mime4j.message.*;
 import org.apache.james.mime4j.stream.BodyDescriptorBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.log4j.Logger;
@@ -32,8 +29,8 @@ import static org.apache.commons.lang.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.join;
 import static org.apache.log4j.Logger.getLogger;
 
-public class EmailParser {
-    private static final Logger LOGGER = getLogger(EmailParser.class);
+public class MailParser {
+    private static final Logger LOGGER = getLogger(MailParser.class);
     private final AtomicInteger count = new AtomicInteger();
     private final DatabaseHelperMethods helperMethods;
     private final String projectName;
@@ -41,7 +38,7 @@ public class EmailParser {
     private final String repositoryUrl;
     private final SocialMediaChannel channelType;
 
-    public EmailParser(DatabaseHelperMethods helperMethods, String projectName, String projectUrl, String repositoryUrl, SocialMediaChannel channelType) {
+    public MailParser(DatabaseHelperMethods helperMethods, String projectName, String projectUrl, String repositoryUrl, SocialMediaChannel channelType) {
         this.helperMethods = helperMethods;
         this.projectName = projectName;
         this.projectUrl = projectUrl;
@@ -70,9 +67,20 @@ public class EmailParser {
                     String subject = message.getSubject();
                     String context = getBody(message);
 
+                    String replyToList = null;
+                    if (replyTo != null && !replyTo.isEmpty()) {
+                        replyToList = join(replyTo, ",");
+                    }
+
+                    String toList = null;
+                    if (to != null && !to.isEmpty()) {
+                        join(to, ",");
+                    }
+
                     int userId = helperMethods.getOrCreateSocialMediaUser(socialMediaRepositoryId, join(fromName, ","), join(fromEmail, ","));
-                    helperMethods.saveSocialMediaEntry(socialMediaRepositoryId, userId, messageId, context, join(replyTo, ","), join(to, ","), subject, sentDate, null, null, null, null);
+                    helperMethods.saveSocialMediaEntry(socialMediaRepositoryId, userId, messageId, context, replyToList, toList, subject, sentDate, null, null, null, null);
                     logCount();
+
                 } else if (message.getHeader().getField("from") != null) {
                     Header header = message.getHeader();
                     String from = header.getField("from").getBody();
@@ -119,7 +127,17 @@ public class EmailParser {
             try {
                 BinaryBody body = (BinaryBody) rawBody;
                 context = IOUtils.toString(body.getInputStream());
-            } catch (Exception ignored) {
+            } catch (Exception e1) {
+                try {
+                    TextBody reader2 = (TextBody) ((MultipartImpl) rawBody).getBodyParts().get(1);
+                    context = IOUtils.toString(reader2.getReader());
+                } catch (Exception e2) {
+                    try {
+                        BinaryBody body2 = (BinaryBody) ((MultipartImpl) rawBody).getBodyParts().get(1);
+                        context = IOUtils.toString(body2.getInputStream());
+                    } catch (Exception ignored) {
+                    }
+                }
             }
         }
         return context;
