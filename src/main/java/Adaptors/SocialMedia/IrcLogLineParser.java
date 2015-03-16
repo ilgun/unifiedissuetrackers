@@ -78,13 +78,7 @@ public class IrcLogLineParser {
                     String username = content.substring(content.indexOf("*** ") + 4, content.indexOf(SETS_MODE) - 1);
                     int userId = helpers.getOrCreateSocialMediaUser(socialMediaRepositoryId, username, username);
                     helpers.createSocialMediaEvent(socialMediaRepositoryId, userId, parseIrcDate(date), SocialMediaEvent.SETS_MODE, content);
-                } else {
-                    System.out.println(content);
-                    String username = content;
-                    //int userId = helpers.getOrCreateSocialMediaUser(socialMediaRepositoryId, username, username);
-                    //helpers.createSocialMediaEvent(socialMediaRepositoryId, userId, parseIrcDate(date), SocialMediaEvent.TOPIC_CHANGE, content);
                 }
-
                 break;
             }
             case "action": {

@@ -143,11 +143,8 @@ public class DatabaseHelperMethods {
         return output;
     }
 
-    public void createUserRelationship(String newUsername, String oldUsername, String reason) {
-        int relatedUserId = getUser(newUsername);
-        int baseUserId = getUser(oldUsername);
-
-        createRelationshipFor(baseUserId, relatedUserId, reason);
+    public void createUserRelationship(int newUserId, int oldUserId, String reason) {
+        createRelationshipFor(newUserId, oldUserId, reason);
     }
 
     private void createRelationshipFor(int userId, int relatedUserIds, String reason) {

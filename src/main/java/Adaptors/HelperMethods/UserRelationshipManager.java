@@ -21,7 +21,7 @@ public class UserRelationshipManager {
             helperMethods.getOrCreateSocialMediaUser(oldNickUserId, socialMediaRepositoryId, newNickname, newNickname);
             int isNewNickHasUser = helperMethods.getUser(newNickname);
             if (isNewNickHasUser != FALSE) {
-                helperMethods.createUserRelationship(newNickname, oldNickname, "Old nick has similar user with the new nick.");
+                helperMethods.createUserRelationship(isNewNickHasUser, oldNickUserId, "Old nick has similar user with the new nick.");
             }
         } else {
             int oldUserId = helperMethods.getUser(oldNickname);
@@ -35,9 +35,9 @@ public class UserRelationshipManager {
                 } else {
                     helperMethods.getOrCreateSocialMediaUser(oldUserId, socialMediaRepositoryId, newNickname, newNickname);
                     if (newUserId < oldUserId) {
-                        helperMethods.createUserRelationship(oldNickname, newNickname, "New nick is already present in the system, possible duplicate.");
+                        helperMethods.createUserRelationship(oldUserId, newUserId, "New nick is already present in the system, possible duplicate.");
                     } else {
-                        helperMethods.createUserRelationship(newNickname, oldNickname, "New nick is already present in the system, possible duplicate.");
+                        helperMethods.createUserRelationship(newUserId, oldUserId, "New nick is already present in the system, possible duplicate.");
                     }
                 }
             }
